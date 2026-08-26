@@ -20,6 +20,7 @@
         <nav class="tool-switcher" aria-label="Field Study tools">
           <button type="button" class="selected" data-tool-switch="foreground" aria-pressed="true"><span>01</span> Foreground Study</button>
           <button type="button" data-tool-switch="poetic" aria-pressed="false"><span>02</span> Poetic Fragments</button>
+          <button type="button" data-tool-switch="contour" aria-pressed="false"><span>03</span> Contour Loom</button>
         </nav>
         <div class="header-meta" aria-label="Project status">
           <span class="privacy-dot"></span>
@@ -92,6 +93,10 @@
                 <span class="status-light"></span>
                 <span id="lowerProcessStatusText">Using the subject image until a lower frame is added</span>
               </div>
+              <button class="swap-images-action" id="swapSourceImages" type="button" disabled>
+                <span class="swap-icon" aria-hidden="true"><i>↑</i><i>↓</i></span>
+                <span><strong>Swap image roles</strong><small>Lower photo ↔ top subject</small></span>
+              </button>
             </div>
           </div>
         </details>
@@ -210,10 +215,10 @@
           </div>
         </details>
 
-        <details class="control-section copy-section" aria-labelledby="copyHeading">
+        <details class="control-section copy-section editorial-control-section" aria-labelledby="copyHeading">
           <summary class="section-heading">
             <span>06</span>
-            <h2 id="copyHeading">Editorial copy</h2>
+            <h2 id="copyHeading">Editorial text</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
@@ -239,6 +244,38 @@
                     <option value="dark">Dark</option>
                   </select>
                 </label>
+              </div>
+            </div>
+            <div class="editorial-panel" id="foregroundEditorialPanel" data-editorial-panel>
+              <div class="editorial-panel-heading">
+                <span>SELECT TEXT LAYER</span>
+                <strong data-editorial-selected-label>Choose a layer</strong>
+              </div>
+              <div class="segmented-control editorial-layer-control" role="group" aria-label="Foreground Study text layer">
+                <button type="button" data-editorial-layer="left" aria-pressed="false">Primary</button>
+                <button type="button" data-editorial-layer="right" aria-pressed="false">Secondary</button>
+                <button type="button" data-editorial-layer="center" aria-pressed="false">Center line</button>
+                <button type="button" data-editorial-layer="rail" aria-pressed="false">Photo words</button>
+              </div>
+              <p class="editorial-empty-note" data-editorial-empty>Click text on the artwork or choose an available layer above.</p>
+              <div class="editorial-controls" data-editorial-controls hidden>
+                <div class="editorial-direct-row">
+                  <div class="editorial-nudge" role="group" aria-label="Nudge selected text">
+                    <button type="button" data-editorial-nudge="up" aria-label="Move text up">↑</button>
+                    <button type="button" data-editorial-nudge="left" aria-label="Move text left">←</button>
+                    <button type="button" data-editorial-nudge="down" aria-label="Move text down">↓</button>
+                    <button type="button" data-editorial-nudge="right" aria-label="Move text right">→</button>
+                  </div>
+                  <p>Drag on canvas<br /><span>Arrow keys · Shift = 10 px</span></p>
+                </div>
+                <label class="range-row" for="foregroundEditorialScale"><span>Text size</span><input id="foregroundEditorialScale" data-editorial-scale type="range" min="45" max="240" value="100" /><output data-editorial-scale-output>100%</output></label>
+                <label class="range-row" for="foregroundEditorialRotation"><span>Rotation</span><input id="foregroundEditorialRotation" data-editorial-rotation type="range" min="-180" max="180" value="0" /><output data-editorial-rotation-output>0°</output></label>
+                <label class="range-row" for="foregroundEditorialOpacity"><span>Opacity</span><input id="foregroundEditorialOpacity" data-editorial-opacity type="range" min="20" max="100" value="100" /><output data-editorial-opacity-output>100%</output></label>
+                <label class="custom-color-row" for="foregroundEditorialColor"><span>Layer color</span><input id="foregroundEditorialColor" data-editorial-color type="color" value="#171914" /><output data-editorial-color-output>#171914</output></label>
+                <div class="editorial-footer-actions">
+                  <label class="compact-check" for="foregroundEditorialLock"><input id="foregroundEditorialLock" data-editorial-lock type="checkbox" /><i aria-hidden="true"></i><span>Lock layer</span></label>
+                  <button class="small-action" type="button" data-editorial-reset>Reset layer</button>
+                </div>
               </div>
             </div>
           </div>
@@ -325,15 +362,33 @@
           </div>
         </details>
 
-        <details class="control-section copy-section" open aria-labelledby="poeticCaptionHeading">
+        <details class="control-section copy-section editorial-control-section" open aria-labelledby="poeticCaptionHeading">
           <summary class="section-heading">
             <span>02</span>
-            <h2 id="poeticCaptionHeading">Poetic caption</h2>
+            <h2 id="poeticCaptionHeading">Editorial text</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
             <div class="section-tool-row"><button class="small-action" id="poeticSuggestCaption" type="button">Regenerate caption</button></div>
             <label for="poeticCaptionInput">Caption<textarea id="poeticCaptionInput" rows="4" maxlength="180">Small windows of color gather inside the quiet architecture of an afternoon.</textarea></label>
+            <div class="editorial-panel" id="poeticEditorialPanel" data-editorial-panel>
+              <div class="editorial-panel-heading"><span>TEXT LAYER</span><strong data-editorial-selected-label>Caption composition</strong></div>
+              <div class="segmented-control editorial-layer-control" role="group" aria-label="Poetic Fragments text layer">
+                <button type="button" data-editorial-layer="caption" aria-pressed="false">Caption + fragments</button>
+              </div>
+              <p class="editorial-empty-note" data-editorial-empty>Click the caption on the artwork to edit its placement.</p>
+              <div class="editorial-controls" data-editorial-controls hidden>
+                <div class="editorial-direct-row">
+                  <div class="editorial-nudge" role="group" aria-label="Nudge caption"><button type="button" data-editorial-nudge="up" aria-label="Move caption up">↑</button><button type="button" data-editorial-nudge="left" aria-label="Move caption left">←</button><button type="button" data-editorial-nudge="down" aria-label="Move caption down">↓</button><button type="button" data-editorial-nudge="right" aria-label="Move caption right">→</button></div>
+                  <p>Caption stays grouped<br /><span>Inline fragments move with it</span></p>
+                </div>
+                <label class="range-row" for="poeticEditorialScale"><span>Group size</span><input id="poeticEditorialScale" data-editorial-scale type="range" min="45" max="240" value="100" /><output data-editorial-scale-output>100%</output></label>
+                <label class="range-row" for="poeticEditorialRotation"><span>Rotation</span><input id="poeticEditorialRotation" data-editorial-rotation type="range" min="-180" max="180" value="0" /><output data-editorial-rotation-output>0°</output></label>
+                <label class="range-row" for="poeticEditorialOpacity"><span>Opacity</span><input id="poeticEditorialOpacity" data-editorial-opacity type="range" min="20" max="100" value="100" /><output data-editorial-opacity-output>100%</output></label>
+                <label class="custom-color-row" for="poeticEditorialColor"><span>Text color</span><input id="poeticEditorialColor" data-editorial-color type="color" value="#171914" /><output data-editorial-color-output>#171914</output></label>
+                <div class="editorial-footer-actions"><label class="compact-check" for="poeticEditorialLock"><input id="poeticEditorialLock" data-editorial-lock type="checkbox" /><i aria-hidden="true"></i><span>Lock layer</span></label><button class="small-action" type="button" data-editorial-reset>Reset layer</button></div>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -443,6 +498,7 @@
         <div class="artboard-stage">
           <div class="artboard-shell poetic-artboard-shell" id="poeticArtboardShell">
             <canvas id="poeticCanvas" width="900" height="1200" aria-label="Poetic Fragments composition"></canvas>
+            <div class="poetic-photo-selection" id="poeticPhotoSelection" aria-hidden="true"></div>
             <div class="empty-overlay" id="poeticEmptyOverlay">
               <span class="fragment-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
               <strong>Begin with a photograph</strong>
@@ -455,9 +511,336 @@
       </section>
     </main>
 
+    <main class="studio contour-studio" id="contourStudio" data-tool-view="contour" hidden>
+      <aside class="control-rail" aria-label="Contour Loom controls">
+        <div class="rail-intro contour-intro">
+          <p class="eyebrow">COMPOSITION 03</p>
+          <h1>Contour<br />Loom</h1>
+          <p>Translate a silhouette into a pixel ornament, then weave its source texture through both halves of the frame.</p>
+        </div>
+
+        <details class="control-section" open aria-labelledby="contourSourcesHeading">
+          <summary class="section-heading">
+            <span>01</span>
+            <h2 id="contourSourcesHeading">Source images</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <p class="sub-input-label">TEXTURE / LOWER-FRAME IMAGE</p>
+            <label class="drop-zone" id="contourTextureDropZone" for="contourTextureInput">
+              <input id="contourTextureInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span class="drop-idle" id="contourTextureIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose the texture image</strong><small>Color source and lower photograph</small></span>
+              </span>
+              <span class="source-preview" id="contourTexturePreview" hidden>
+                <img id="contourTextureThumb" alt="Contour Loom texture preview" />
+                <span><strong id="contourTextureName">Texture image</strong><small id="contourTextureMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="source-actions" id="contourTextureActions" hidden>
+              <button type="button" id="contourResetPhoto">↶ Reset photo position</button>
+              <button type="button" class="source-clear" id="contourClearTexture">Remove</button>
+            </div>
+            <p class="sub-input-label contour-mask-label">CONTOUR / SHAPE IMAGE</p>
+            <label class="drop-zone" id="contourMaskDropZone" for="contourMaskInput">
+              <input id="contourMaskInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span class="drop-idle" id="contourMaskIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose the contour image</strong><small>High-contrast shapes work especially well</small></span>
+              </span>
+              <span class="source-preview" id="contourMaskPreview" hidden>
+                <img id="contourMaskThumb" alt="Contour Loom shape preview" />
+                <span><strong id="contourMaskName">Contour image</strong><small id="contourMaskMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="source-actions" id="contourMaskActions" hidden>
+              <button type="button" id="contourResetMotif">↶ Reset motif position</button>
+              <button type="button" class="source-clear" id="contourClearMask">Remove</button>
+            </div>
+            <div class="contour-icon-source">
+              <span class="source-or" aria-hidden="true">OR</span>
+              <button class="icon-library-trigger" id="contourOpenIconPicker" type="button">
+                <span class="icon-library-trigger-mark" aria-hidden="true">
+                  <img id="contourIconSourceMark" src="/vendor/lucide/icons/shapes.svg" alt="" />
+                </span>
+                <span><strong>Choose from Lucide</strong><small id="contourIconSourceNote">Search 2,035 local icon shapes</small></span>
+                <em>Browse</em>
+              </button>
+            </div>
+            <p class="source-mode-note contour-paste-note">Tip: paste an image with ⌘V / Ctrl+V while this tool is active.</p>
+            <div class="process-status" id="contourProcessStatus" aria-live="polite">
+              <span class="status-light"></span>
+              <span id="contourProcessStatusText">Waiting for texture and contour images</span>
+            </div>
+            <button class="swap-images-action" id="contourSwapImages" type="button" disabled>
+              <span class="swap-icon" aria-hidden="true"><i>↑</i><i>↓</i></span>
+              <span><strong>Swap image roles</strong><small>Texture / photo ↔ contour source</small></span>
+            </button>
+          </div>
+        </details>
+
+        <details class="control-section" open aria-labelledby="contourMatrixHeading">
+          <summary class="section-heading">
+            <span>02</span>
+            <h2 id="contourMatrixHeading">Contour matrix</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <label class="range-row" for="contourGridSize">
+              <span>Grid detail</span>
+              <input id="contourGridSize" type="range" min="15" max="55" step="2" value="31" />
+              <output id="contourGridSizeOutput">31 × 31</output>
+            </label>
+            <label class="range-row" for="contourSensitivity">
+              <span>Contour sensitivity</span>
+              <input id="contourSensitivity" type="range" min="0" max="100" value="75" />
+              <output id="contourSensitivityOutput">75</output>
+            </label>
+            <label class="range-row" for="contourCleanup">
+              <span>Edge cleanup</span>
+              <input id="contourCleanup" type="range" min="0" max="3" value="1" />
+              <output id="contourCleanupOutput">1 pass</output>
+            </label>
+            <label class="range-row" for="contourCellGap">
+              <span>Cell spacing</span>
+              <input id="contourCellGap" type="range" min="0" max="30" value="8" />
+              <output id="contourCellGapOutput">8%</output>
+            </label>
+            <div class="matrix-toggle-grid">
+              <label class="compact-check" for="contourInvert">
+                <input id="contourInvert" type="checkbox" />
+                <i aria-hidden="true"></i>
+                <span>Invert foreground / background</span>
+              </label>
+              <label class="compact-check" for="contourHollow">
+                <input id="contourHollow" type="checkbox" checked />
+                <i aria-hidden="true"></i>
+                <span>Extract hollow contour</span>
+              </label>
+            </div>
+            <div class="matrix-advanced">
+              <span class="micro-label">PIXEL CELL</span>
+              <div class="segmented-control contour-cell-control" role="group" aria-label="Pixel cell shape">
+                <button type="button" class="selected" data-contour-cell="square" aria-pressed="true">Square</button>
+                <button type="button" data-contour-cell="round" aria-pressed="false">Round</button>
+                <button type="button" data-contour-cell="diamond" aria-pressed="false">Diamond</button>
+              </div>
+              <span class="micro-label">TEXTURE MAPPING</span>
+              <div class="segmented-control contour-texture-control" role="group" aria-label="Motif texture mapping">
+                <button type="button" class="selected" data-contour-texture="continuous" aria-pressed="true">Continuous</button>
+                <button type="button" data-contour-texture="mosaic" aria-pressed="false">Mosaic</button>
+                <button type="button" data-contour-texture="tonal" aria-pressed="false">Tonal</button>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="contourSymmetryHeading">
+          <summary class="section-heading">
+            <span>03</span>
+            <h2 id="contourSymmetryHeading">Symmetry</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="symmetry-grid" role="group" aria-label="Contour symmetry">
+              <button type="button" class="selected" data-contour-symmetry="none" aria-pressed="true"><i>◇</i> Original</button>
+              <button type="button" data-contour-symmetry="horizontal" aria-pressed="false"><i>↔</i> Horizontal</button>
+              <button type="button" data-contour-symmetry="vertical" aria-pressed="false"><i>↕</i> Vertical</button>
+              <button type="button" data-contour-symmetry="quad" aria-pressed="false"><i>⊞</i> Four-way</button>
+              <button type="button" class="symmetry-wide" data-contour-symmetry="kaleidoscope" aria-pressed="false"><i>✺</i> Kaleidoscope</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section" id="contourPositionControls" aria-labelledby="contourPositionHeading">
+          <summary class="section-heading">
+            <span>04</span>
+            <h2 id="contourPositionHeading">Position & scale</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control contour-layer-control" role="group" aria-label="Contour Loom active layer">
+              <button type="button" class="selected" data-contour-layer="motif" aria-pressed="true">Pixel motif</button>
+              <button type="button" data-contour-layer="photo" aria-pressed="false">Lower photo</button>
+            </div>
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Click either half to select it, then drag to reposition</p>
+            <label class="range-row" for="contourLayerScale">
+              <span>Layer scale</span>
+              <input id="contourLayerScale" type="range" min="65" max="180" value="100" />
+              <output id="contourLayerScaleOutput">100%</output>
+            </label>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="contourLayoutHeading">
+          <summary class="section-heading">
+            <span>05</span>
+            <h2 id="contourLayoutHeading">Layout style</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="contour-layout-options" role="radiogroup" aria-label="Contour Loom layout style">
+              <button type="button" class="selected" data-contour-layout="orbit" role="radio" aria-checked="true">
+                <span class="contour-layout-icon layout-center-icon"><i></i></span>
+                <span><strong>Centered weave</strong><small>Image edge and pixel motif share one center</small></span>
+                <em>01</em>
+              </button>
+              <button type="button" data-contour-layout="baseline" role="radio" aria-checked="false">
+                <span class="contour-layout-icon layout-split-icon"><i></i></span>
+                <span><strong>Split-edge alignment</strong><small>Labels align to both ends of the divider</small></span>
+                <em>02</em>
+              </button>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section copy-section editorial-control-section" open aria-labelledby="contourCopyHeading">
+          <summary class="section-heading">
+            <span>06</span>
+            <h2 id="contourCopyHeading">Editorial text</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row contour-copy-action"><button class="small-action" id="contourSuggestCopy" type="button">Analyze both images</button></div>
+            <p class="source-mode-note contour-copy-note">Local dual-image suggestions use color, contour density, and symmetry.</p>
+            <label for="contourLeftCopy">Left / upper label<textarea id="contourLeftCopy" rows="3" maxlength="120">Chromatic Field Study&#10;a quiet geometry gathered from light</textarea></label>
+            <label for="contourRightCopy">Right / lower label<textarea id="contourRightCopy" rows="3" maxlength="120">Woven Contour Motif&#10;Colorway: Moss · Ochre · Alabaster</textarea></label>
+            <div class="editorial-panel" id="contourEditorialPanel" data-editorial-panel>
+              <div class="editorial-panel-heading"><span>SELECT TEXT LAYER</span><strong data-editorial-selected-label>Choose a label</strong></div>
+              <div class="segmented-control editorial-layer-control" role="group" aria-label="Contour Loom text layer">
+                <button type="button" data-editorial-layer="left" aria-pressed="false">Left label</button>
+                <button type="button" data-editorial-layer="right" aria-pressed="false">Right label</button>
+              </div>
+              <p class="editorial-empty-note" data-editorial-empty>Click either label on the artwork to highlight and move it.</p>
+              <div class="editorial-controls" data-editorial-controls hidden>
+                <div class="editorial-direct-row">
+                  <div class="editorial-nudge" role="group" aria-label="Nudge selected label"><button type="button" data-editorial-nudge="up" aria-label="Move label up">↑</button><button type="button" data-editorial-nudge="left" aria-label="Move label left">←</button><button type="button" data-editorial-nudge="down" aria-label="Move label down">↓</button><button type="button" data-editorial-nudge="right" aria-label="Move label right">→</button></div>
+                  <p>Drag on canvas<br /><span>Use handles for size + angle</span></p>
+                </div>
+                <label class="range-row" for="contourEditorialScale"><span>Text size</span><input id="contourEditorialScale" data-editorial-scale type="range" min="45" max="240" value="100" /><output data-editorial-scale-output>100%</output></label>
+                <label class="range-row" for="contourEditorialRotation"><span>Rotation</span><input id="contourEditorialRotation" data-editorial-rotation type="range" min="-180" max="180" value="0" /><output data-editorial-rotation-output>0°</output></label>
+                <label class="range-row" for="contourEditorialOpacity"><span>Opacity</span><input id="contourEditorialOpacity" data-editorial-opacity type="range" min="20" max="100" value="100" /><output data-editorial-opacity-output>100%</output></label>
+                <label class="custom-color-row" for="contourEditorialColor"><span>Layer color</span><input id="contourEditorialColor" data-editorial-color type="color" value="#171914" /><output data-editorial-color-output>#171914</output></label>
+                <div class="editorial-footer-actions"><label class="compact-check" for="contourEditorialLock"><input id="contourEditorialLock" data-editorial-lock type="checkbox" /><i aria-hidden="true"></i><span>Lock layer</span></label><button class="small-action" type="button" data-editorial-reset>Reset layer</button></div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section copy-section" aria-labelledby="contourSurfaceHeading">
+          <summary class="section-heading">
+            <span>07</span>
+            <h2 id="contourSurfaceHeading">Field & color</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <label class="toggle-row contour-dot-toggle" for="contourShowDots">
+              <span><strong>Dotted field</strong><small>Show the registration grid above</small></span>
+              <input id="contourShowDots" type="checkbox" checked />
+              <i aria-hidden="true"></i>
+            </label>
+            <label class="custom-color-row" for="contourFieldColor">
+              <span>Upper field</span>
+              <input id="contourFieldColor" type="color" value="#f5f3ee" />
+              <output id="contourFieldValue">#F5F3EE</output>
+            </label>
+            <label class="custom-color-row" for="contourTextColor">
+              <span>Text color</span>
+              <input id="contourTextColor" type="color" value="#171914" />
+              <output id="contourTextValue">#171914</output>
+            </label>
+            <label class="custom-color-row" for="contourMaskColor">
+              <span>Lower motif</span>
+              <input id="contourMaskColor" type="color" value="#f5f3ee" />
+              <output id="contourMaskValue">#F5F3EE</output>
+            </label>
+          </div>
+        </details>
+
+        <div class="rail-footer">
+          <label for="contourExportSize">Output size
+            <select id="contourExportSize">
+              <option value="900">900 × 1200</option>
+              <option value="1350">1350 × 1800</option>
+            </select>
+          </label>
+          <button class="rail-export" id="contourRailExport" type="button">Export 3:4 PNG <span>↓</span></button>
+        </div>
+      </aside>
+
+      <section class="workspace contour-workspace" aria-label="Contour Loom preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status"><i></i> LIVE COMPOSITION</span>
+            <span id="contourLayerStatus">PIXEL MOTIF ACTIVE</span>
+          </div>
+          <div>
+            <span>3:4</span>
+            <span id="contourCanvasDimensions">900 × 1200 PX</span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell contour-artboard-shell" id="contourArtboardShell">
+            <canvas id="contourCanvas" width="900" height="1200" aria-label="Contour Loom composition"></canvas>
+            <div class="contour-half-zones" role="group" aria-label="Select and move a Contour Loom layer">
+              <button type="button" data-contour-canvas-layer="motif" aria-label="Select and move the pixel motif"><span>Pixel motif</span></button>
+              <button type="button" data-contour-canvas-layer="photo" aria-label="Select and move the lower photo"><span>Lower photo</span></button>
+            </div>
+            <div class="empty-overlay" id="contourEmptyOverlay">
+              <span class="contour-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+              <strong>Begin with two images</strong>
+              <p>Add a texture photograph and a contour image. Contour Loom will translate the shape into a woven pixel ornament.</p>
+              <button type="button" id="contourEmptyChooseButton">Choose texture image</button>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help"><span>TIP</span> Drag the upper motif or lower photograph directly on the artwork. Both source images stay local.</p>
+      </section>
+    </main>
+
+    <dialog class="icon-picker" id="contourIconPicker" aria-labelledby="contourIconPickerTitle">
+      <div class="icon-picker-frame">
+        <header class="icon-picker-header">
+          <div>
+            <p class="eyebrow">LOCAL SHAPE LIBRARY</p>
+            <h2 id="contourIconPickerTitle">Choose a contour icon</h2>
+            <p>Select a Lucide shape to translate through Contour Loom’s existing pixel matrix.</p>
+          </div>
+          <button class="icon-picker-close" id="contourIconPickerClose" type="button" aria-label="Close icon picker">×</button>
+        </header>
+        <div class="icon-picker-search-row">
+          <label for="contourIconSearch">
+            <img src="/vendor/lucide/icons/search.svg" alt="" />
+            <input id="contourIconSearch" type="search" autocomplete="off" placeholder="Search icons, forms, objects, actions…" />
+            <kbd>ESC</kbd>
+          </label>
+          <p id="contourIconPickerStatus" aria-live="polite">Loading local library…</p>
+        </div>
+        <div class="icon-picker-results" id="contourIconResults" role="listbox" aria-label="Lucide contour icons"></div>
+        <button class="icon-picker-more" id="contourIconMore" type="button" hidden>Show more icons</button>
+        <footer class="icon-picker-footer">
+          <div class="icon-picker-selection" id="contourIconSelection">
+            <span aria-hidden="true"><img src="/vendor/lucide/icons/shapes.svg" alt="" /></span>
+            <p><strong>No icon selected</strong><small>Choose a shape from the library</small></p>
+          </div>
+          <div>
+            <button class="icon-picker-cancel" id="contourIconPickerCancel" type="button">Cancel</button>
+            <button class="icon-picker-use" id="contourIconUse" type="button" disabled>Use as contour</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <iframe name="fieldStudyDownload" title="Export download" hidden></iframe>
+    <script src="/alignment-guides.js"></script>
+    <script src="/editorial-text.js"></script>
     <script src="/app.js"></script>
     <script src="/poetic.js"></script>
+    <script src="/contour.js"></script>
+    <script src="/contour-icon-picker.js"></script>
   </body>
 </html>

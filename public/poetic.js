@@ -11,6 +11,7 @@
   const HEIGHT = 1200;
   const SPLIT_Y = 520;
   const PHOTO_HEIGHT = HEIGHT - SPLIT_Y;
+  const defaultCaptionTransform = () => ({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, locked: false });
 
   const state = {
     image: null,
@@ -27,6 +28,7 @@
     fontSize: 36,
     background: "#efeee9",
     textColor: "#171914",
+    captionTransform: defaultCaptionTransform(),
     photo: { x: 0.5, y: 0.5, scale: 1 },
     outputWidth: 900,
     seed: 4,
@@ -224,11 +226,9 @@
     const baseScale = Math.max(boxWidth / imageWidth, boxHeight / imageHeight);
     const width = imageWidth * baseScale * scale;
     const height = imageHeight * baseScale * scale;
-    const overflowX = Math.max(0, width - boxWidth);
-    const overflowY = Math.max(0, height - boxHeight);
     return {
-      x: -overflowX * positionX,
-      y: -overflowY * positionY,
+      x: boxWidth * positionX - width / 2,
+      y: boxHeight * positionY - height / 2,
       width,
       height,
     };
@@ -316,53 +316,65 @@
     return { lines, gap };
   }
 
+  function captionBounds(layout = null) {
+    const nextLayout = layout || layoutCaptionItems(captionItems(null));
+    if (!nextLayout.lines.length) return { x: 70, y: 170, width: 760, height: 180 };
+    const totalHeight = nextLayout.lines.reduce((sum, line) => sum + line.height, 0);
+    const width = Math.max(120, ...nextLayout.lines.map((line) => line.width));
+    const y = Math.max(38, (SPLIT_Y - totalHeight) / 2);
+    return { x: (WIDTH - width) / 2, y, width, height: totalHeight };
+  }
+
   function drawCaption(photoLayer) {
     const items = captionItems(photoLayer);
     if (!items.length) return;
     const layout = layoutCaptionItems(items);
     const totalHeight = layout.lines.reduce((sum, line) => sum + line.height, 0);
-    let y = Math.max(38, (SPLIT_Y - totalHeight) / 2);
-    ctx.fillStyle = state.textColor;
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "400 " + state.fontSize + "px " + fontFamily();
-    layout.lines.forEach((line) => {
-      let x = (WIDTH - line.width) / 2;
-      const baseline = y + line.height / 2 + state.fontSize * 0.34;
-      line.items.forEach((item, itemIndex) => {
-        if (itemIndex) x += layout.gap;
-        if (item.type === "word") {
-          ctx.fillStyle = state.textColor;
-          ctx.fillText(item.text, x, baseline);
-          x += item.width;
-          return;
-        }
-        const bracketGap = item.brackets[0] ? layout.gap * 0.35 : 0;
-        if (item.brackets[0]) {
-          ctx.fillStyle = state.textColor;
-          ctx.fillText(item.brackets[0], x, baseline);
-          x += ctx.measureText(item.brackets[0]).width + bracketGap;
-        }
-        const imageY = y + (line.height - item.height) / 2;
-        ctx.drawImage(
-          photoLayer,
-          item.sourceRect.x,
-          item.sourceRect.y,
-          item.sourceRect.width,
-          item.sourceRect.height,
-          x,
-          imageY,
-          item.imageWidth,
-          item.height
-        );
-        x += item.imageWidth;
-        if (item.brackets[1]) {
-          x += bracketGap;
-          ctx.fillStyle = state.textColor;
-          ctx.fillText(item.brackets[1], x, baseline);
-          x += ctx.measureText(item.brackets[1]).width;
-        }
+    const bounds = captionBounds(layout);
+    window.editorialText.transformContext(ctx, bounds, state.captionTransform, () => {
+      let y = Math.max(38, (SPLIT_Y - totalHeight) / 2);
+      ctx.fillStyle = state.textColor;
+      ctx.textBaseline = "alphabetic";
+      ctx.font = "400 " + state.fontSize + "px " + fontFamily();
+      layout.lines.forEach((line) => {
+        let x = (WIDTH - line.width) / 2;
+        const baseline = y + line.height / 2 + state.fontSize * 0.34;
+        line.items.forEach((item, itemIndex) => {
+          if (itemIndex) x += layout.gap;
+          if (item.type === "word") {
+            ctx.fillStyle = state.textColor;
+            ctx.fillText(item.text, x, baseline);
+            x += item.width;
+            return;
+          }
+          const bracketGap = item.brackets[0] ? layout.gap * 0.35 : 0;
+          if (item.brackets[0]) {
+            ctx.fillStyle = state.textColor;
+            ctx.fillText(item.brackets[0], x, baseline);
+            x += ctx.measureText(item.brackets[0]).width + bracketGap;
+          }
+          const imageY = y + (line.height - item.height) / 2;
+          ctx.drawImage(
+            photoLayer,
+            item.sourceRect.x,
+            item.sourceRect.y,
+            item.sourceRect.width,
+            item.sourceRect.height,
+            x,
+            imageY,
+            item.imageWidth,
+            item.height
+          );
+          x += item.imageWidth;
+          if (item.brackets[1]) {
+            x += bracketGap;
+            ctx.fillStyle = state.textColor;
+            ctx.fillText(item.brackets[1], x, baseline);
+            x += ctx.measureText(item.brackets[1]).width;
+          }
+        });
+        y += line.height;
       });
-      y += line.height;
     });
   }
 
@@ -406,6 +418,7 @@
     ctx.fillRect(0, SPLIT_Y - 1, WIDTH, 2);
     ctx.globalAlpha = 1;
     ctx.restore();
+    window.editorialText?.refresh("poetic");
   }
 
   function syncControls() {
@@ -443,6 +456,7 @@
     state.fontSize = 36;
     state.background = "#efeee9";
     state.textColor = "#171914";
+    state.captionTransform = defaultCaptionTransform();
     state.photo = { x: 0.5, y: 0.5, scale: 1 };
     state.activeFragment = -1;
     $("#poeticCaptionInput").value = state.caption;
@@ -533,8 +547,8 @@
       fragment.x = clamp(fragment.x + deltaX / WIDTH, 0, 1 - width);
       fragment.y = clamp(fragment.y + deltaY / PHOTO_HEIGHT, 0, 1 - height);
     } else {
-      state.photo.x = clamp(state.photo.x - deltaX / WIDTH, 0, 1);
-      state.photo.y = clamp(state.photo.y - deltaY / PHOTO_HEIGHT, 0, 1);
+      state.photo.x = clamp(state.photo.x + deltaX / WIDTH, -0.15, 1.15);
+      state.photo.y = clamp(state.photo.y + deltaY / PHOTO_HEIGHT, -0.15, 1.15);
     }
     state.dragging.point = point;
     render();
@@ -645,6 +659,33 @@
     syncControls();
     render();
   }
+
+  window.editorialText.register("poetic", {
+    canvas,
+    shell: $("#poeticArtboardShell"),
+    panel: "#poeticEditorialPanel",
+    width: WIDTH,
+    height: HEIGHT,
+    getLayers: () => [{
+      id: "caption",
+      label: "Caption + fragments",
+      bounds: captionBounds(),
+      transform: state.captionTransform,
+      color: state.textColor,
+      enabled: Boolean(state.image && state.caption.trim()),
+    }],
+    updateLayer: (id, patch) => {
+      if (patch.color) {
+        state.textColor = patch.color;
+        delete patch.color;
+        syncControls();
+      }
+      Object.assign(state.captionTransform, patch);
+    },
+    resetLayer: () => { state.captionTransform = defaultCaptionTransform(); },
+    getAlignment: () => ({ x: 450, y: SPLIT_Y / 2, threshold: 12, region: { x: 0, y: 0, width: WIDTH, height: SPLIT_Y } }),
+    render,
+  });
 
   window.poeticFragments = { activate, reset, exportPng };
   ensureFragments();

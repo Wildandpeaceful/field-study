@@ -26,6 +26,7 @@
   const pixelContrastOutput = $("#pixelContrastOutput");
   const activeLayerLabel = $("#activeLayerLabel");
   const toast = $("#toast");
+  const defaultTextTransform = () => ({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, color: null, locked: false });
 
   const state = {
     sourceImage: null,
@@ -59,6 +60,12 @@
       note: "Form held briefly against the field",
       style: "Field Composition",
       credit: "Studio Archive",
+    },
+    textLayers: {
+      left: defaultTextTransform(),
+      right: defaultTextTransform(),
+      center: defaultTextTransform(),
+      rail: defaultTextTransform(),
     },
     outputWidth: 900,
     processing: false,
@@ -168,6 +175,7 @@
       processingOverlay.hidden = true;
       setProcessStatus("ready", "Foreground isolated locally · ready to compose");
       resetTransformsForLayout();
+      syncControls();
       render();
       showToast("Foreground extracted. Drag the subject to compose.");
     } catch (error) {
@@ -175,6 +183,7 @@
       console.error(error);
       state.processing = false;
       processingOverlay.hidden = true;
+      syncControls();
 
       if (state.sourceImage) {
         state.foregroundImage = createFallbackForeground(state.sourceImage);
@@ -214,6 +223,7 @@
       state.lowerImage = await loadImage(state.lowerUrl);
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
       setLowerProcessStatus("ready", "Independent lower frame ready");
+      syncControls();
       render();
       showToast("Lower-frame image added. Select Lower photo to reposition it.");
     } catch (error) {
@@ -233,6 +243,28 @@
     if (separate) state.showSilhouette = false;
     syncControls();
     render();
+  }
+
+  async function swapSourceImages() {
+    if (state.sourceMode !== "separate" || !state.file || !state.lowerFile || state.processing) {
+      showToast("Add both source images before swapping their roles.");
+      return;
+    }
+    const button = $("#swapSourceImages");
+    const previousSubjectFile = state.file;
+    const previousLowerFile = state.lowerFile;
+    button.classList.add("working");
+    button.disabled = true;
+    setProcessStatus("working", "Swapping roles and extracting the new top subject");
+    try {
+      await handleFile(previousLowerFile);
+      await handleLowerFile(previousSubjectFile);
+      selectActiveLayer("subject", true);
+      showToast("Images swapped. The new top subject has been extracted locally.");
+    } finally {
+      button.classList.remove("working");
+      syncControls();
+    }
   }
 
   function createFallbackForeground(image) {
@@ -434,6 +466,12 @@
     };
     state.subject = { ...positions[state.layout], scale: 1 };
     state.photo = { x: 0.5, y: 0.5, scale: 1 };
+    state.textLayers = {
+      left: defaultTextTransform(),
+      right: defaultTextTransform(),
+      center: defaultTextTransform(),
+      rail: defaultTextTransform(),
+    };
     updateLayerScaleControl();
   }
 
@@ -584,6 +622,7 @@
     ctx.fillStyle = contrastTextColor(state.background, 0.44);
     ctx.fillRect(0, splitY - 1, logicalWidth, 2);
     ctx.restore();
+    window.editorialText?.refresh("foreground");
   }
 
   function subjectGeometry(topRect) {
@@ -744,33 +783,41 @@
     const availableWidth = rect.width - margin * 2;
     const fontSize = words.length > 11 ? 13 : words.length > 8 ? 15 : 17;
     const y = rect.y + 27;
-    let color;
-    if (state.photoWordTone === "light") color = "#ffffff";
-    else if (state.photoWordTone === "dark") color = "#171914";
-    else color = sampledBandTextColor(target, rect);
+    let fallbackColor;
+    if (state.photoWordTone === "light") fallbackColor = "#ffffff";
+    else if (state.photoWordTone === "dark") fallbackColor = "#171914";
+    else fallbackColor = sampledBandTextColor(target, rect);
+    const color = state.textLayers.rail.color || fallbackColor;
+    const bounds = photoRailBounds(rect);
 
-    target.save();
-    target.beginPath();
-    target.rect(rect.x, rect.y, rect.width, rect.height);
-    target.clip();
-    target.fillStyle = color;
-    target.font = `700 ${fontSize}px ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif`;
-    target.textBaseline = "middle";
-    target.shadowColor = color === "#ffffff" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.24)";
-    target.shadowBlur = 1.5;
-    target.shadowOffsetY = 1;
+    window.editorialText.transformContext(target, bounds, state.textLayers.rail, () => {
+      target.save();
+      target.beginPath();
+      target.rect(rect.x, rect.y, rect.width, rect.height);
+      target.clip();
+      target.fillStyle = color;
+      target.font = `700 ${fontSize}px ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif`;
+      target.textBaseline = "middle";
+      target.shadowColor = color === "#ffffff" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.24)";
+      target.shadowBlur = 1.5;
+      target.shadowOffsetY = 1;
 
-    words.forEach((word, index) => {
-      if (words.length === 1) {
-        target.textAlign = "center";
-        target.fillText(word, rect.x + rect.width / 2, y);
-        return;
-      }
-      const x = rect.x + margin + availableWidth * index / (words.length - 1);
-      target.textAlign = index === 0 ? "left" : index === words.length - 1 ? "right" : "center";
-      target.fillText(word, x, y);
+      words.forEach((word, index) => {
+        if (words.length === 1) {
+          target.textAlign = "center";
+          target.fillText(word, rect.x + rect.width / 2, y);
+          return;
+        }
+        const x = rect.x + margin + availableWidth * index / (words.length - 1);
+        target.textAlign = index === 0 ? "left" : index === words.length - 1 ? "right" : "center";
+        target.fillText(word, x, y);
+      });
+      target.restore();
     });
-    target.restore();
+  }
+
+  function photoRailBounds(rect = { x: 0, y: 632, width: 900, height: 568 }) {
+    return { x: rect.x + 36, y: rect.y + 7, width: rect.width - 72, height: 40 };
   }
 
   function sampledBandTextColor(target, rect) {
@@ -794,42 +841,75 @@
     }
   }
 
+  function copyLayerBounds(id, rect = { width: 900, height: 632 }) {
+    if (state.layout === "orbit") {
+      return id === "left"
+        ? { x: 48, y: 272, width: 245, height: 92 }
+        : { x: 607, y: 272, width: 245, height: 108 };
+    }
+    if (state.layout === "baseline") {
+      if (id === "left") return { x: 38, y: rect.height - 92, width: 235, height: 82 };
+      if (id === "center") return { x: 285, y: rect.height - 82, width: 330, height: 42 };
+      return { x: 627, y: rect.height - 92, width: 235, height: 82 };
+    }
+    return id === "left"
+      ? { x: 538, y: 164, width: 310, height: 160 }
+      : { x: 538, y: 330, width: 330, height: 42 };
+  }
+
+  function drawForegroundTextLayer(target, id, rect, fallbackColor, draw) {
+    const transform = state.textLayers[id];
+    const color = transform.color || fallbackColor;
+    window.editorialText.transformContext(target, copyLayerBounds(id, rect), transform, () => draw(color));
+  }
+
   function drawEditorialCopy(target, rect) {
     const textColor = contrastTextColor(state.background);
-    target.save();
-    target.fillStyle = textColor;
-    target.textBaseline = "top";
 
     if (state.layout === "orbit") {
-      drawCopyBlock(target, state.copy.title, state.copy.note, 58, 284, 235, "left", textColor);
-      drawCopyBlock(
-        target,
-        state.copy.style,
-        `${state.copy.credit}\n${paletteLabel()}`,
-        842,
-        284,
-        235,
-        "right",
-        textColor
-      );
+      drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
+        target.textBaseline = "top";
+        drawCopyBlock(target, state.copy.title, state.copy.note, 58, 284, 235, "left", color);
+      });
+      drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
+        target.textBaseline = "top";
+        drawCopyBlock(target, state.copy.style, `${state.copy.credit}\n${paletteLabel()}`, 842, 284, 235, "right", color);
+      });
     } else if (state.layout === "baseline") {
-      drawCopyBlock(target, state.copy.title, state.copy.credit, 48, rect.height - 81, 225, "left", textColor);
-      target.font = "600 14px ui-sans-serif, -apple-system, sans-serif";
-      target.textAlign = "center";
-      drawTrackingLine(target, state.copy.note.toUpperCase(), 450, rect.height - 62, 330, textColor);
-      drawCopyBlock(target, state.copy.style, paletteLabel(), 852, rect.height - 81, 225, "right", textColor);
+      drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
+        target.textBaseline = "top";
+        drawCopyBlock(target, state.copy.title, state.copy.credit, 48, rect.height - 81, 225, "left", color);
+      });
+      drawForegroundTextLayer(target, "center", rect, textColor, (color) => {
+        target.textBaseline = "top";
+        target.font = "600 14px ui-sans-serif, -apple-system, sans-serif";
+        target.textAlign = "center";
+        drawTrackingLine(target, state.copy.note.toUpperCase(), 450, rect.height - 62, 330, color);
+      });
+      drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
+        target.textBaseline = "top";
+        drawCopyBlock(target, state.copy.style, paletteLabel(), 852, rect.height - 81, 225, "right", color);
+      });
     } else {
-      target.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
-      target.textAlign = "left";
-      target.fillText("FIELD / 01", 548, 178);
-      drawCopyBlock(target, state.copy.title, state.copy.note, 548, 218, 290, "left", textColor, 22);
-      target.fillStyle = textColor;
-      target.globalAlpha = 0.7;
-      target.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
-      target.fillText(`${state.copy.style.toUpperCase()} · ${paletteLabel()}`, 548, 350);
-      target.globalAlpha = 1;
+      drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
+        target.fillStyle = color;
+        target.textBaseline = "top";
+        target.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+        target.textAlign = "left";
+        target.fillText("FIELD / 01", 548, 178);
+        drawCopyBlock(target, state.copy.title, state.copy.note, 548, 218, 290, "left", color, 22);
+      });
+      drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
+        const baseAlpha = target.globalAlpha;
+        target.fillStyle = color;
+        target.globalAlpha = baseAlpha * 0.7;
+        target.textBaseline = "top";
+        target.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+        target.textAlign = "left";
+        target.fillText(`${state.copy.style.toUpperCase()} · ${paletteLabel()}`, 548, 350);
+        target.globalAlpha = baseAlpha;
+      });
     }
-    target.restore();
   }
 
   function drawCopyBlock(target, title, detail, x, y, width, align, color, titleSize = 17) {
@@ -839,11 +919,12 @@
     const titleLines = wrapText(target, title, width, 2);
     titleLines.forEach((line, index) => target.fillText(line, x, y + index * (titleSize + 3)));
     const titleHeight = titleLines.length * (titleSize + 3);
-    target.globalAlpha = 0.72;
+    const baseAlpha = target.globalAlpha;
+    target.globalAlpha = baseAlpha * 0.72;
     target.font = "500 11px ui-monospace, SFMono-Regular, Menlo, monospace";
     const detailLines = String(detail).split("\n").flatMap((line) => wrapText(target, line, width, 2));
     detailLines.forEach((line, index) => target.fillText(line, x, y + titleHeight + 9 + index * 15));
-    target.globalAlpha = 1;
+    target.globalAlpha = baseAlpha;
   }
 
   function drawTrackingLine(target, text, centerX, y, maxWidth, color) {
@@ -1179,8 +1260,10 @@
   });
 
   function activateTool(tool) {
-    const nextTool = tool === "poetic" ? "poetic" : "foreground";
+    const availableTools = new Set(["foreground", "poetic", "contour"]);
+    const nextTool = availableTools.has(tool) ? tool : "foreground";
     document.body.dataset.activeTool = nextTool;
+    window.editorialText?.activate(nextTool);
     $$("[data-tool-view]").forEach((view) => {
       view.hidden = view.dataset.toolView !== nextTool;
     });
@@ -1192,6 +1275,9 @@
     if (nextTool === "poetic") {
       document.title = "Poetic Fragments — Field/Study";
       window.poeticFragments?.activate();
+    } else if (nextTool === "contour") {
+      document.title = "Contour Loom — Field/Study";
+      window.contourLoom?.activate();
     } else {
       document.title = "Foreground Study — Field/Study";
       $("#fileNameHeader").textContent = state.sourceImage
@@ -1206,11 +1292,15 @@
   });
 
   $("#resetButton").addEventListener("click", () => {
-    if (document.body.dataset.activeTool === "poetic") window.poeticFragments?.reset();
+    const activeTool = document.body.dataset.activeTool;
+    if (activeTool === "poetic") window.poeticFragments?.reset();
+    else if (activeTool === "contour") window.contourLoom?.reset();
     else resetComposition();
   });
   $("#exportButton").addEventListener("click", () => {
-    if (document.body.dataset.activeTool === "poetic") window.poeticFragments?.exportPng();
+    const activeTool = document.body.dataset.activeTool;
+    if (activeTool === "poetic") window.poeticFragments?.exportPng();
+    else if (activeTool === "contour") window.contourLoom?.exportPng();
     else exportPng();
   });
   $("#railExportButton").addEventListener("click", exportPng);
@@ -1218,12 +1308,42 @@
   window.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "e") {
       event.preventDefault();
-      if (document.body.dataset.activeTool === "poetic") window.poeticFragments?.exportPng();
+      const activeTool = document.body.dataset.activeTool;
+      if (activeTool === "poetic") window.poeticFragments?.exportPng();
+      else if (activeTool === "contour") window.contourLoom?.exportPng();
       else exportPng();
     }
   });
 
   window.fieldStudyShell = { activateTool, showToast };
+
+  window.editorialText.register("foreground", {
+    canvas,
+    shell: $("#artboardShell"),
+    panel: "#foregroundEditorialPanel",
+    width: 900,
+    height: 1200,
+    getLayers: () => {
+      const textColor = contrastTextColor(state.background);
+      const layers = [
+        { id: "left", label: "Primary editorial text", bounds: copyLayerBounds("left"), enabled: Boolean(state.sourceImage) },
+        { id: "right", label: "Secondary editorial text", bounds: copyLayerBounds("right"), enabled: Boolean(state.sourceImage) },
+        { id: "center", label: "Center tracking line", bounds: copyLayerBounds("center"), enabled: Boolean(state.sourceImage && state.layout === "baseline") },
+        { id: "rail", label: "Photo word rail", bounds: photoRailBounds(), enabled: Boolean(state.sourceImage && state.showPhotoWords) },
+      ];
+      return layers.map((layer) => ({
+        ...layer,
+        transform: state.textLayers[layer.id],
+        color: state.textLayers[layer.id].color || (layer.id === "rail" && state.photoWordTone === "dark" ? "#171914" : layer.id === "rail" ? "#ffffff" : textColor),
+      }));
+    },
+    updateLayer: (id, patch) => Object.assign(state.textLayers[id], patch),
+    resetLayer: (id) => { state.textLayers[id] = defaultTextTransform(); },
+    getAlignment: (layer) => layer.id === "rail"
+      ? { x: 450, y: 916, threshold: 12, region: { x: 0, y: 632, width: 900, height: 568 } }
+      : { x: 450, y: 316, threshold: 12, region: { x: 0, y: 0, width: 900, height: 632 } },
+    render,
+  });
 
   renderSwatches();
   syncControls();
