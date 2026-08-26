@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171914" />
+    <title>Field/Study — Local Editorial Image Studio</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="#studio" aria-label="Field Study home">
+        <svg aria-hidden="true" viewBox="0 0 32 32">
+          <path d="M4 4h10v10H4zM18 4h10v10H18zM4 18h10v10H4z" fill="currentColor" />
+          <circle cx="23" cy="23" r="5" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+        <span>FIELD/STUDY</span>
+      </a>
+      <div class="header-center">
+        <nav class="tool-switcher" aria-label="Field Study tools">
+          <button type="button" class="selected" data-tool-switch="foreground" aria-pressed="true"><span>01</span> Foreground Study</button>
+          <button type="button" data-tool-switch="poetic" aria-pressed="false"><span>02</span> Poetic Fragments</button>
+        </nav>
+        <div class="header-meta" aria-label="Project status">
+          <span class="privacy-dot"></span>
+          <span>LOCAL PROCESSING</span>
+          <span class="header-separator"></span>
+          <span id="fileNameHeader">UNTITLED STUDY</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="text-button" id="resetButton" type="button">Reset</button>
+        <button class="primary-action" id="exportButton" type="button">
+          <span>Export PNG</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v10m0 0 4-4m-4 4L6 8M3 14v3h14v-3" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="studio" id="studio" data-tool-view="foreground">
+      <aside class="control-rail" aria-label="Composition controls">
+        <div class="rail-intro">
+          <p class="eyebrow">COMPOSITION 01</p>
+          <h1>Foreground<br />Field Study</h1>
+          <p>Extract a subject, set the treatment, then compose the image as an editorial artifact.</p>
+        </div>
+
+        <details class="control-section source-section" aria-labelledby="sourceHeading">
+          <summary class="section-heading">
+            <span>01</span>
+            <h2 id="sourceHeading">Source image</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control source-mode-control" role="group" aria-label="Source image mode">
+              <button type="button" class="selected" data-source-mode="linked" aria-pressed="true">One image</button>
+              <button type="button" data-source-mode="separate" aria-pressed="false">Two images</button>
+            </div>
+            <p class="source-mode-note" id="sourceModeNote">One photograph drives the subject and lower frame.</p>
+            <p class="sub-input-label">SUBJECT / MASK IMAGE</p>
+            <label class="drop-zone" id="dropZone" for="fileInput">
+              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span class="drop-idle" id="dropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose a subject image</strong><small>or drop it here · JPG, PNG, WebP</small></span>
+              </span>
+              <span class="source-preview" id="sourcePreview" hidden>
+                <img id="sourceThumb" alt="Uploaded subject source preview" />
+                <span><strong id="sourceName">Subject image</strong><small id="sourceMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="process-status" id="processStatus" aria-live="polite">
+              <span class="status-light"></span>
+              <span id="processStatusText">Waiting for a subject image</span>
+            </div>
+            <div class="lower-source-block" id="lowerSourceBlock" hidden>
+              <p class="sub-input-label">LOWER-FRAME IMAGE</p>
+              <label class="drop-zone" id="lowerDropZone" for="lowerFileInput">
+                <input id="lowerFileInput" type="file" accept="image/jpeg,image/png,image/webp" />
+                <span class="drop-idle" id="lowerDropIdle">
+                  <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                  <span><strong>Choose the lower frame</strong><small>Uses its own crop and position</small></span>
+                </span>
+                <span class="source-preview" id="lowerSourcePreview" hidden>
+                  <img id="lowerSourceThumb" alt="Uploaded lower-frame preview" />
+                  <span><strong id="lowerSourceName">Lower frame</strong><small id="lowerSourceMeta">Ready</small></span>
+                  <em>Replace</em>
+                </span>
+              </label>
+              <div class="process-status" id="lowerProcessStatus" aria-live="polite">
+                <span class="status-light"></span>
+                <span id="lowerProcessStatusText">Using the subject image until a lower frame is added</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section" id="positionControls" aria-labelledby="positionHeading">
+          <summary class="section-heading">
+            <span>02</span>
+            <h2 id="positionHeading">Position & scale</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control layer-control" role="group" aria-label="Active layer">
+              <button type="button" class="selected" data-layer="subject" aria-pressed="true">Top subject</button>
+              <button type="button" data-layer="photo" aria-pressed="false">Lower photo</button>
+            </div>
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Click a half to select it, then drag to reposition</p>
+            <label class="range-row" for="layerScale">
+              <span>Layer scale</span>
+              <input id="layerScale" type="range" min="60" max="180" value="100" />
+              <output id="layerScaleOutput">100%</output>
+            </label>
+            <label class="toggle-row" id="silhouetteToggleRow" for="showSilhouette">
+              <span><strong>Negative silhouette</strong><small id="silhouetteHint">Fill the subject in the lower photo</small></span>
+              <input id="showSilhouette" type="checkbox" checked />
+              <i aria-hidden="true"></i>
+            </label>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="treatmentHeading" open>
+          <summary class="section-heading">
+            <span>03</span>
+            <h2 id="treatmentHeading">Subject treatment</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control treatment-control" role="group" aria-label="Subject treatment">
+              <button type="button" class="selected" data-effect="original" aria-pressed="true">
+                <span class="effect-icon effect-original"></span>Original
+              </button>
+              <button type="button" data-effect="pixel" aria-pressed="false">
+                <span class="effect-icon effect-pixel"></span>Pixel
+              </button>
+              <button type="button" data-effect="halftone" aria-pressed="false">
+                <span class="effect-icon effect-halftone"></span>Halftone
+              </button>
+            </div>
+            <label class="range-row" for="effectSize">
+              <span>Effect scale</span>
+              <input id="effectSize" type="range" min="6" max="24" value="12" />
+              <output id="effectSizeOutput">12</output>
+            </label>
+            <div class="pixel-controls" id="pixelControls" hidden>
+              <label class="range-row" for="pixelColorSteps">
+                <span>Color steps</span>
+                <input id="pixelColorSteps" type="range" min="0" max="8" value="0" />
+                <output id="pixelColorStepsOutput">0</output>
+              </label>
+              <label class="range-row" for="pixelContrast">
+                <span>Contrast</span>
+                <input id="pixelContrast" type="range" min="0" max="60" value="0" />
+                <output id="pixelContrastOutput">0</output>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="paletteHeading" open>
+          <summary class="section-heading">
+            <span>04</span>
+            <h2 id="paletteHeading">Image palette</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="refreshPalette" type="button">Recalculate palette</button></div>
+            <div class="palette-block">
+              <div class="palette-label"><span>HARMONIOUS</span><small>from subject image</small></div>
+              <div class="swatch-row" id="harmoniousSwatches" aria-label="Harmonious colors"></div>
+            </div>
+            <div class="palette-block">
+              <div class="palette-label"><span>CONTRAST</span><small>color theory</small></div>
+              <div class="swatch-row" id="contrastSwatches" aria-label="Contrast colors"></div>
+            </div>
+            <label class="custom-color-row" for="customColor">
+              <span>Custom background</span>
+              <input id="customColor" type="color" value="#d6ff45" />
+              <output id="colorValue">#D6FF45</output>
+            </label>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="layoutHeading">
+          <summary class="section-heading">
+            <span>05</span>
+            <h2 id="layoutHeading">Layout system</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="layout-options" role="radiogroup" aria-label="Layout system">
+              <button type="button" class="layout-option selected" data-layout="orbit" role="radio" aria-checked="true">
+                <span class="layout-diagram diagram-orbit"><i></i></span>
+                <span><strong>Orbit</strong><small>Subject centered, copy on either side</small></span>
+                <em>01</em>
+              </button>
+              <button type="button" class="layout-option" data-layout="baseline" role="radio" aria-checked="false">
+                <span class="layout-diagram diagram-baseline"><i></i></span>
+                <span><strong>Baseline</strong><small>Copy locks to the dividing edge</small></span>
+                <em>02</em>
+              </button>
+              <button type="button" class="layout-option" data-layout="editorial" role="radio" aria-checked="false">
+                <span class="layout-diagram diagram-editorial"><i></i></span>
+                <span><strong>Editorial</strong><small>Asymmetric subject and stacked copy</small></span>
+                <em>03</em>
+              </button>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section copy-section" aria-labelledby="copyHeading">
+          <summary class="section-heading">
+            <span>06</span>
+            <h2 id="copyHeading">Editorial copy</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="suggestCopy" type="button">Suggest from image</button></div>
+            <label for="titleInput">Title<input id="titleInput" type="text" value="A Study in Motion" maxlength="52" /></label>
+            <label for="noteInput">Short note<textarea id="noteInput" rows="2" maxlength="100">Form held briefly against the field</textarea></label>
+            <div class="two-column-inputs">
+              <label for="styleInput">Style<input id="styleInput" type="text" value="Field Composition" maxlength="34" /></label>
+              <label for="creditInput">Credit<input id="creditInput" type="text" value="Studio Archive" maxlength="34" /></label>
+            </div>
+            <div class="photo-rail-control">
+              <label class="toggle-row" for="showPhotoWords">
+                <span><strong>Photo word rail</strong><small>Distribute words along the photo edge</small></span>
+                <input id="showPhotoWords" type="checkbox" />
+                <i aria-hidden="true"></i>
+              </label>
+              <div class="photo-word-fields" id="photoWordFields" hidden>
+                <label for="photoWordsInput">Words on photo<input id="photoWordsInput" type="text" value="Street Study · by Field Studio · Color Archive" maxlength="140" /></label>
+                <label for="photoWordTone">Text tone
+                  <select id="photoWordTone">
+                    <option value="auto">Auto contrast</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="rail-footer">
+          <label for="exportSize">Output size
+            <select id="exportSize">
+              <option value="900">900 × 1200</option>
+              <option value="1350">1350 × 1800</option>
+            </select>
+          </label>
+          <button class="rail-export" id="railExportButton" type="button">Export 3:4 PNG <span>↓</span></button>
+        </div>
+      </aside>
+
+      <section class="workspace" aria-label="Live composition preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status"><i></i> LIVE COMPOSITION</span>
+            <span id="activeLayerLabel">SUBJECT LAYER ACTIVE</span>
+          </div>
+          <div>
+            <span>3:4</span>
+            <span id="canvasDimensions">900 × 1200 PX</span>
+          </div>
+        </div>
+
+        <div class="artboard-stage">
+          <div class="artboard-shell" id="artboardShell">
+            <canvas id="compositionCanvas" width="900" height="1200" aria-label="Generated editorial composition"></canvas>
+            <div class="layer-hit-zones" role="group" aria-label="Select and move an artwork layer">
+              <button type="button" data-canvas-layer="subject" aria-label="Select and move the top subject"><span>Top subject</span></button>
+              <button type="button" data-canvas-layer="photo" aria-label="Select and move the lower photo"><span>Lower photo</span></button>
+            </div>
+            <div class="empty-overlay" id="emptyOverlay">
+              <span class="empty-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+              <strong>Begin with an image</strong>
+              <p>Your source stays on this Mac. Drop a photograph into the control rail to extract its foreground.</p>
+              <button type="button" id="emptyChooseButton">Choose photograph</button>
+            </div>
+            <div class="processing-overlay" id="processingOverlay" hidden>
+              <span class="scan-frame"><i></i></span>
+              <strong>Finding foreground</strong>
+              <small>Apple Vision is separating the subject locally</small>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help"><span>TIP</span> Hover and click either half to select it, then drag directly on the artwork.</p>
+      </section>
+    </main>
+
+    <main class="studio poetic-studio" id="poeticStudio" data-tool-view="poetic" hidden>
+      <aside class="control-rail" aria-label="Poetic Fragments controls">
+        <div class="rail-intro poetic-intro">
+          <p class="eyebrow">COMPOSITION 02</p>
+          <h1>Poetic<br />Fragments</h1>
+          <p>Lift small windows from a photograph and weave them into a line of text.</p>
+        </div>
+
+        <details class="control-section" open aria-labelledby="poeticSourceHeading">
+          <summary class="section-heading">
+            <span>01</span>
+            <h2 id="poeticSourceHeading">Source image</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <label class="drop-zone" id="poeticDropZone" for="poeticSourceInput">
+              <input id="poeticSourceInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span class="drop-idle" id="poeticDropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose a photograph</strong><small>or drop it here · JPG, PNG, WebP</small></span>
+              </span>
+              <span class="source-preview" id="poeticSourcePreview" hidden>
+                <img id="poeticSourceThumb" alt="Poetic Fragments source preview" />
+                <span><strong id="poeticSourceName">Source image</strong><small id="poeticSourceMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="process-status" id="poeticProcessStatus" aria-live="polite">
+              <span class="status-light"></span>
+              <span id="poeticProcessStatusText">Waiting for a photograph</span>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section copy-section" open aria-labelledby="poeticCaptionHeading">
+          <summary class="section-heading">
+            <span>02</span>
+            <h2 id="poeticCaptionHeading">Poetic caption</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="poeticSuggestCaption" type="button">Regenerate caption</button></div>
+            <label for="poeticCaptionInput">Caption<textarea id="poeticCaptionInput" rows="4" maxlength="180">Small windows of color gather inside the quiet architecture of an afternoon.</textarea></label>
+          </div>
+        </details>
+
+        <details class="control-section" id="fragmentControls" aria-labelledby="fragmentHeading">
+          <summary class="section-heading">
+            <span>03</span>
+            <h2 id="fragmentHeading">Fragments & placement</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control fragment-mode-control" role="group" aria-label="Fragment placement mode">
+              <button type="button" class="selected" data-fragment-placement="locked" aria-pressed="true">Locked</button>
+              <button type="button" data-fragment-placement="random" aria-pressed="false">Random</button>
+            </div>
+            <p class="source-mode-note">Locked preserves your crop positions. Random reshuffles them when the composition changes.</p>
+            <label class="range-row" for="fragmentCount">
+              <span>Fragments</span>
+              <input id="fragmentCount" type="range" min="3" max="10" value="7" />
+              <output id="fragmentCountOutput">7</output>
+            </label>
+            <label class="range-row" for="fragmentScale">
+              <span>Crop size</span>
+              <input id="fragmentScale" type="range" min="60" max="180" value="100" />
+              <output id="fragmentScaleOutput">1.0×</output>
+            </label>
+            <button class="outline-action" id="rerollFragments" type="button">Shuffle crop windows <span>↗</span></button>
+          </div>
+        </details>
+
+        <details class="control-section copy-section" aria-labelledby="fragmentStyleHeading">
+          <summary class="section-heading">
+            <span>04</span>
+            <h2 id="fragmentStyleHeading">Type & surface</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <label for="poeticFontFamily">Typeface
+              <select id="poeticFontFamily">
+                <option value="sans">Studio Sans</option>
+                <option value="serif">Editorial Serif</option>
+                <option value="mono">Archive Mono</option>
+              </select>
+            </label>
+            <label for="poeticBracketStyle">Fragment marks
+              <select id="poeticBracketStyle">
+                <option value="round">( fragment )</option>
+                <option value="square">[ fragment ]</option>
+                <option value="none">No marks</option>
+              </select>
+            </label>
+            <label class="range-row" for="poeticFontSize">
+              <span>Text scale</span>
+              <input id="poeticFontSize" type="range" min="24" max="54" value="36" />
+              <output id="poeticFontSizeOutput">36px</output>
+            </label>
+            <label class="custom-color-row" for="poeticBackgroundColor">
+              <span>Upper field</span>
+              <input id="poeticBackgroundColor" type="color" value="#efeee9" />
+              <output id="poeticBackgroundValue">#EFEEE9</output>
+            </label>
+            <label class="custom-color-row" for="poeticTextColor">
+              <span>Text color</span>
+              <input id="poeticTextColor" type="color" value="#171914" />
+              <output id="poeticTextValue">#171914</output>
+            </label>
+          </div>
+        </details>
+
+        <details class="control-section" id="poeticPhotoControls" aria-labelledby="poeticPhotoHeading">
+          <summary class="section-heading">
+            <span>05</span>
+            <h2 id="poeticPhotoHeading">Photo framing</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Drag the photo to reframe it</p>
+            <label class="range-row" for="poeticPhotoScale">
+              <span>Photo scale</span>
+              <input id="poeticPhotoScale" type="range" min="80" max="180" value="100" />
+              <output id="poeticPhotoScaleOutput">100%</output>
+            </label>
+          </div>
+        </details>
+
+        <div class="rail-footer">
+          <label for="poeticExportSize">Output size
+            <select id="poeticExportSize">
+              <option value="900">900 × 1200</option>
+              <option value="1350">1350 × 1800</option>
+            </select>
+          </label>
+          <button class="rail-export" id="poeticRailExport" type="button">Export 3:4 PNG <span>↓</span></button>
+        </div>
+      </aside>
+
+      <section class="workspace poetic-workspace" aria-label="Poetic Fragments preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status"><i></i> LIVE COMPOSITION</span>
+            <span id="poeticFragmentStatus">7 FRAGMENTS</span>
+          </div>
+          <div>
+            <span>3:4</span>
+            <span id="poeticCanvasDimensions">900 × 1200 PX</span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell poetic-artboard-shell" id="poeticArtboardShell">
+            <canvas id="poeticCanvas" width="900" height="1200" aria-label="Poetic Fragments composition"></canvas>
+            <div class="empty-overlay" id="poeticEmptyOverlay">
+              <span class="fragment-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <strong>Begin with a photograph</strong>
+              <p>Poetic Fragments will lift small windows from the image and weave them through your caption.</p>
+              <button type="button" id="poeticEmptyChooseButton">Choose photograph</button>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help"><span>TIP</span> Drag a white crop window to change the fragment shown in the sentence.</p>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <iframe name="fieldStudyDownload" title="Export download" hidden></iframe>
+    <script src="/app.js"></script>
+    <script src="/poetic.js"></script>
+  </body>
+</html>
