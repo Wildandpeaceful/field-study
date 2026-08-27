@@ -20,17 +20,24 @@
   const layerScaleOutput = $("#layerScaleOutput");
   const effectSize = $("#effectSize");
   const effectSizeOutput = $("#effectSizeOutput");
-  const pixelColorSteps = $("#pixelColorSteps");
-  const pixelColorStepsOutput = $("#pixelColorStepsOutput");
   const pixelContrast = $("#pixelContrast");
   const pixelContrastOutput = $("#pixelContrastOutput");
   const activeLayerLabel = $("#activeLayerLabel");
   const toast = $("#toast");
+  const assetExtractorDialog = $("#assetExtractorDialog");
+  const assetExtractorSource = $("#assetExtractorSource");
+  const assetExtractorResult = $("#assetExtractorResult");
+  const assetExtractorMarker = $("#assetExtractorMarker");
+  const assetExtractorScan = $("#assetExtractorScan");
+  const assetExtractorStatus = $("#assetExtractorStatus");
+  const assetExtractorUse = $("#assetExtractorUse");
   const defaultTextTransform = () => ({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, color: null, locked: false });
 
   const state = {
     sourceImage: null,
     foregroundImage: null,
+    foregroundSourceImage: null,
+    foregroundAssets: [],
     foregroundBounds: null,
     sourceUrl: null,
     foregroundUrl: null,
@@ -42,11 +49,11 @@
     sourceMode: "linked",
     effect: "original",
     effectSize: 12,
-    pixelColorSteps: 0,
     pixelContrast: 0,
     background: "#d6ff45",
     harmonious: ["#d6ff45", "#dce5d2", "#b7c9ff", "#f1e7d0", "#a6ae9b"],
     contrast: ["#4b45ff", "#ff5c45", "#8d4eff", "#14564d", "#181b17"],
+    paletteTarget: "background",
     layout: "orbit",
     activeLayer: "subject",
     subject: { x: 0.5, y: 0.43, scale: 1 },
@@ -74,6 +81,11 @@
 
   let toastTimer = null;
   let dragging = null;
+  let pointExtractionController = null;
+  let pointExtractionCandidate = null;
+  let pointExtractionResultUrl = null;
+  let pointExtractorModulePromise = null;
+  let pointExtractionGeneration = 0;
 
   function showToast(message) {
     clearTimeout(toastTimer);
@@ -132,7 +144,11 @@
     state.sourceUrl = URL.createObjectURL(file);
     state.foregroundUrl = null;
     state.foregroundImage = null;
+    state.foregroundSourceImage = null;
+    state.foregroundAssets = [];
     state.foregroundBounds = null;
+    $("#foregroundAssetPanel").hidden = true;
+    $("#foregroundAssetGrid").replaceChildren();
     state.processing = true;
 
     $("#sourceThumb").src = state.sourceUrl;
@@ -147,7 +163,7 @@
 
     try {
       state.sourceImage = await loadImage(state.sourceUrl);
-      state.harmonious = extractPalette(state.sourceImage, 5);
+      state.harmonious = extractProjectPalette(5);
       state.contrast = buildContrastPalette(state.harmonious);
       state.background = selectStrongBackground(state.harmonious);
       $("#customColor").value = state.background;
@@ -167,13 +183,15 @@
       }
       const foregroundBlob = await response.blob();
       state.foregroundUrl = URL.createObjectURL(foregroundBlob);
-      state.foregroundImage = await loadImage(state.foregroundUrl);
-      state.foregroundBounds = findAlphaBounds(state.foregroundImage);
+      state.foregroundSourceImage = await loadImage(state.foregroundUrl);
+      state.foregroundAssets = detectForegroundAssets(state.foregroundSourceImage);
+      composeForegroundAssets(false);
       if (!state.foregroundBounds) throw new Error("No foreground subject was found");
 
       state.processing = false;
       processingOverlay.hidden = true;
-      setProcessStatus("ready", "Foreground isolated locally · ready to compose");
+      const assetCount = state.foregroundAssets.length || 1;
+      setProcessStatus("ready", `${assetCount} foreground asset${assetCount === 1 ? "" : "s"} isolated locally`);
       resetTransformsForLayout();
       syncControls();
       render();
@@ -186,8 +204,9 @@
       syncControls();
 
       if (state.sourceImage) {
-        state.foregroundImage = createFallbackForeground(state.sourceImage);
-        state.foregroundBounds = findAlphaBounds(state.foregroundImage);
+        state.foregroundSourceImage = createFallbackForeground(state.sourceImage);
+        state.foregroundAssets = detectForegroundAssets(state.foregroundSourceImage);
+        composeForegroundAssets(false);
         const visionRuntimeUnavailable = /ANECF|inference plan|CVPixelBuffer|VisionCore/i.test(error.message);
         const statusMessage = visionRuntimeUnavailable
           ? "Apple Vision is unavailable in this launch · using a soft local fallback"
@@ -228,6 +247,9 @@
 
     try {
       state.lowerImage = await loadImage(state.lowerUrl);
+      state.harmonious = extractProjectPalette(5);
+      state.contrast = buildContrastPalette(state.harmonious);
+      renderSwatches();
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
       setLowerProcessStatus("ready", "Independent lower frame ready");
       syncControls();
@@ -364,7 +386,325 @@
     };
   }
 
+  function foregroundAssetFromImage(image, id, selected = true) {
+    const bounds = findAlphaBounds(image);
+    if (!bounds) return null;
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    const x = Math.max(0, Math.floor(bounds.x));
+    const y = Math.max(0, Math.floor(bounds.y));
+    const right = Math.min(sourceWidth, Math.ceil(bounds.x + bounds.width));
+    const bottom = Math.min(sourceHeight, Math.ceil(bounds.y + bounds.height));
+    const assetCanvas = document.createElement("canvas");
+    assetCanvas.width = Math.max(1, right - x);
+    assetCanvas.height = Math.max(1, bottom - y);
+    assetCanvas.getContext("2d").drawImage(
+      image,
+      x, y, assetCanvas.width, assetCanvas.height,
+      0, 0, assetCanvas.width, assetCanvas.height,
+    );
+    return { id, canvas: assetCanvas, x, y, selected, source: "point" };
+  }
+
+  function detectForegroundAssets(image) {
+    if (!image) return [];
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    const scale = Math.min(1, 360 / Math.max(sourceWidth, sourceHeight));
+    const sample = document.createElement("canvas");
+    sample.width = Math.max(1, Math.round(sourceWidth * scale));
+    sample.height = Math.max(1, Math.round(sourceHeight * scale));
+    const sampleContext = sample.getContext("2d", { willReadFrequently: true });
+    sampleContext.drawImage(image, 0, 0, sample.width, sample.height);
+    const pixels = sampleContext.getImageData(0, 0, sample.width, sample.height).data;
+    const labels = new Int32Array(sample.width * sample.height);
+    const queue = new Int32Array(labels.length);
+    const components = [];
+    let label = 0;
+    const minimumArea = Math.max(18, Math.round(labels.length * 0.0007));
+
+    for (let start = 0; start < labels.length; start += 1) {
+      if (labels[start] || pixels[start * 4 + 3] <= 18) continue;
+      label += 1;
+      let head = 0;
+      let tail = 1;
+      let area = 0;
+      let minX = sample.width;
+      let minY = sample.height;
+      let maxX = -1;
+      let maxY = -1;
+      queue[0] = start;
+      labels[start] = label;
+      while (head < tail) {
+        const index = queue[head++];
+        const x = index % sample.width;
+        const y = Math.floor(index / sample.width);
+        area += 1;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        for (let oy = -1; oy <= 1; oy += 1) {
+          for (let ox = -1; ox <= 1; ox += 1) {
+            if (!ox && !oy) continue;
+            const nx = x + ox;
+            const ny = y + oy;
+            if (nx < 0 || ny < 0 || nx >= sample.width || ny >= sample.height) continue;
+            const neighbor = ny * sample.width + nx;
+            if (labels[neighbor] || pixels[neighbor * 4 + 3] <= 18) continue;
+            labels[neighbor] = label;
+            queue[tail++] = neighbor;
+          }
+        }
+      }
+      if (area >= minimumArea) components.push({ label, area, minX, minY, maxX, maxY });
+    }
+
+    const inverse = 1 / scale;
+    return components
+      .sort((a, b) => b.area - a.area)
+      .slice(0, 16)
+      .map((component, index) => {
+        const padding = Math.max(2, Math.round(3 * inverse));
+        const x = Math.max(0, Math.floor(component.minX * inverse) - padding);
+        const y = Math.max(0, Math.floor(component.minY * inverse) - padding);
+        const right = Math.min(sourceWidth, Math.ceil((component.maxX + 1) * inverse) + padding);
+        const bottom = Math.min(sourceHeight, Math.ceil((component.maxY + 1) * inverse) + padding);
+        const assetCanvas = document.createElement("canvas");
+        assetCanvas.width = Math.max(1, right - x);
+        assetCanvas.height = Math.max(1, bottom - y);
+        const assetContext = assetCanvas.getContext("2d");
+        assetContext.drawImage(image, x, y, assetCanvas.width, assetCanvas.height, 0, 0, assetCanvas.width, assetCanvas.height);
+
+        const mask = document.createElement("canvas");
+        mask.width = sample.width;
+        mask.height = sample.height;
+        const maskContext = mask.getContext("2d");
+        const maskFrame = maskContext.createImageData(mask.width, mask.height);
+        for (let pixelIndex = 0; pixelIndex < labels.length; pixelIndex += 1) {
+          if (labels[pixelIndex] === component.label) {
+            const offset = pixelIndex * 4;
+            maskFrame.data[offset] = 255;
+            maskFrame.data[offset + 1] = 255;
+            maskFrame.data[offset + 2] = 255;
+            maskFrame.data[offset + 3] = 255;
+          }
+        }
+        maskContext.putImageData(maskFrame, 0, 0);
+        assetContext.globalCompositeOperation = "destination-in";
+        assetContext.imageSmoothingEnabled = true;
+        assetContext.drawImage(mask, x * scale, y * scale, assetCanvas.width * scale, assetCanvas.height * scale, 0, 0, assetCanvas.width, assetCanvas.height);
+        assetContext.globalCompositeOperation = "source-over";
+        return { id: `asset-${index + 1}`, canvas: assetCanvas, x, y, selected: true };
+      });
+  }
+
+  function renderForegroundAssets() {
+    const panel = $("#foregroundAssetPanel");
+    panel.hidden = !state.foregroundSourceImage;
+    const grid = $("#foregroundAssetGrid");
+    grid.replaceChildren(...state.foregroundAssets.map((asset, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `foreground-asset${asset.selected ? " selected" : ""}`;
+      button.setAttribute("aria-pressed", String(asset.selected));
+      button.setAttribute("aria-label", `${asset.selected ? "Exclude" : "Include"} extracted asset ${index + 1}`);
+      const preview = document.createElement("img");
+      preview.src = asset.canvas.toDataURL("image/png");
+      preview.alt = "";
+      button.append(preview);
+      button.addEventListener("click", () => {
+        asset.selected = !asset.selected;
+        composeForegroundAssets();
+      });
+      return button;
+    }));
+  }
+
+  function composeForegroundAssets(refresh = true) {
+    if (!state.foregroundSourceImage) return;
+    const width = state.foregroundSourceImage.naturalWidth || state.foregroundSourceImage.width;
+    const height = state.foregroundSourceImage.naturalHeight || state.foregroundSourceImage.height;
+    if (!state.foregroundAssets.length) {
+      state.foregroundImage = state.foregroundSourceImage;
+    } else {
+      const combined = document.createElement("canvas");
+      combined.width = width;
+      combined.height = height;
+      const combinedContext = combined.getContext("2d");
+      state.foregroundAssets.filter((asset) => asset.selected).forEach((asset) => {
+        combinedContext.drawImage(asset.canvas, asset.x, asset.y);
+      });
+      state.foregroundImage = combined;
+    }
+    state.foregroundBounds = findAlphaBounds(state.foregroundImage);
+    renderForegroundAssets();
+    if (refresh) {
+      syncControls();
+      render();
+    }
+  }
+
+  function setPointExtractionStatus(title, note, kind = "") {
+    const strong = document.createElement("strong");
+    strong.textContent = title;
+    const small = document.createElement("small");
+    small.textContent = note;
+    assetExtractorStatus.className = kind;
+    assetExtractorStatus.replaceChildren(strong, small);
+  }
+
+  function clearPointExtractionResult() {
+    pointExtractionCandidate = null;
+    assetExtractorUse.disabled = true;
+    assetExtractorResult.hidden = true;
+    assetExtractorResult.removeAttribute("src");
+    $("#assetExtractorImageWrap").classList.remove("has-result");
+    if (pointExtractionResultUrl) {
+      URL.revokeObjectURL(pointExtractionResultUrl);
+      pointExtractionResultUrl = null;
+    }
+  }
+
+  function getPointExtractorModule() {
+    if (!pointExtractorModulePromise) {
+      pointExtractorModulePromise = import("/point-extractor.js").catch((error) => {
+        pointExtractorModulePromise = null;
+        throw error;
+      });
+    }
+    return pointExtractorModulePromise;
+  }
+
+  async function warmPointExtractor() {
+    try {
+      const pointExtractor = await getPointExtractorModule();
+      await pointExtractor.prepare(state.sourceImage);
+      if (assetExtractorDialog.open && assetExtractorMarker.hidden) {
+        setPointExtractionStatus("Choose an object", "The local point model is ready. Click near the center of a visible object.");
+      }
+    } catch (error) {
+      console.warn("Point segmentation model unavailable; Apple Vision fallback remains available.", error);
+      if (assetExtractorDialog.open && assetExtractorMarker.hidden) {
+        setPointExtractionStatus("Choose an object", "Click an object to use the Apple Vision fallback.");
+      }
+    }
+  }
+
+  function openPointExtractor() {
+    if (!state.file || !state.sourceImage || state.processing) {
+      showToast("Add a source image before extracting an object.");
+      return;
+    }
+    pointExtractionController?.abort();
+    clearPointExtractionResult();
+    assetExtractorMarker.hidden = true;
+    assetExtractorScan.hidden = true;
+    assetExtractorSource.src = state.sourceUrl;
+    setPointExtractionStatus("Preparing local object model", "You can click now; the first selection may take a few seconds.", "working");
+    if (!assetExtractorDialog.open) assetExtractorDialog.showModal();
+    warmPointExtractor();
+  }
+
+  function closePointExtractor() {
+    pointExtractionGeneration += 1;
+    pointExtractionController?.abort();
+    pointExtractionController = null;
+    if (assetExtractorDialog.open) assetExtractorDialog.close();
+  }
+
+  async function extractAssetAtPoint(event) {
+    if (!state.file || state.processing) return;
+    const rect = assetExtractorSource.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    assetExtractorMarker.style.left = `${x * 100}%`;
+    assetExtractorMarker.style.top = `${y * 100}%`;
+    assetExtractorMarker.hidden = false;
+    assetExtractorScan.hidden = false;
+    clearPointExtractionResult();
+    setPointExtractionStatus("Finding that object", "The point-guided model is tracing the selected shape locally.", "working");
+
+    pointExtractionController?.abort();
+    const generation = ++pointExtractionGeneration;
+    try {
+      let resultImage;
+      try {
+        const pointExtractor = await getPointExtractorModule();
+        resultImage = await pointExtractor.extract(state.sourceImage, { x, y });
+      } catch (modelError) {
+        console.warn("Point-guided model could not complete this selection; trying Apple Vision.", modelError);
+        if (generation !== pointExtractionGeneration || !assetExtractorDialog.open) return;
+        setPointExtractionStatus("Trying the system fallback", "Apple Vision is checking the same point.", "working");
+        pointExtractionController = new AbortController();
+        const response = await fetch(`/api/segment?x=${x.toFixed(8)}&y=${y.toFixed(8)}`, {
+          method: "POST",
+          headers: { "Content-Type": state.file.type || "image/jpeg" },
+          body: state.file,
+          signal: pointExtractionController.signal,
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "No distinct object was found at that point");
+        }
+        const fallbackBlob = await response.blob();
+        const fallbackUrl = URL.createObjectURL(fallbackBlob);
+        try {
+          resultImage = await loadImage(fallbackUrl);
+        } finally {
+          URL.revokeObjectURL(fallbackUrl);
+        }
+      }
+      if (generation !== pointExtractionGeneration || !assetExtractorDialog.open) return;
+      pointExtractionCandidate = foregroundAssetFromImage(
+        resultImage,
+        `point-${Date.now()}`,
+      );
+      if (!pointExtractionCandidate) throw new Error("The selected point did not produce a usable cutout");
+      const previewBlob = await new Promise((resolve, reject) => {
+        if (resultImage instanceof HTMLCanvasElement) {
+          resultImage.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not preview the extracted object")), "image/png");
+          return;
+        }
+        const preview = document.createElement("canvas");
+        preview.width = resultImage.naturalWidth || resultImage.width;
+        preview.height = resultImage.naturalHeight || resultImage.height;
+        preview.getContext("2d").drawImage(resultImage, 0, 0);
+        preview.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not preview the extracted object")), "image/png");
+      });
+      if (generation !== pointExtractionGeneration || !assetExtractorDialog.open) return;
+      pointExtractionResultUrl = URL.createObjectURL(previewBlob);
+      assetExtractorResult.src = pointExtractionResultUrl;
+      assetExtractorResult.hidden = false;
+      assetExtractorScan.hidden = true;
+      assetExtractorUse.disabled = false;
+      $("#assetExtractorImageWrap").classList.add("has-result");
+      setPointExtractionStatus("Object found", "Review the highlighted cutout, click elsewhere to retry, or add it as an asset.", "ready");
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      if (generation !== pointExtractionGeneration || !assetExtractorDialog.open) return;
+      console.error(error);
+      assetExtractorScan.hidden = true;
+      clearPointExtractionResult();
+      setPointExtractionStatus("No clean object found there", "Try a point farther inside the object or choose another visible region.", "error");
+    }
+  }
+
+  function addPointExtractionAsset() {
+    if (!pointExtractionCandidate) return;
+    state.foregroundAssets.push(pointExtractionCandidate);
+    pointExtractionCandidate = null;
+    composeForegroundAssets();
+    const assetCount = state.foregroundAssets.length;
+    setProcessStatus("ready", `${assetCount} foreground asset${assetCount === 1 ? "" : "s"} available`);
+    closePointExtractor();
+    showToast("Extracted object added to the foreground study.");
+  }
+
   function extractPalette(image, colorCount) {
+    const enhanced = window.projectPalette?.extract([image], colorCount);
+    if (enhanced?.length >= colorCount) return enhanced.slice(0, colorCount);
     const sample = document.createElement("canvas");
     sample.width = 96;
     sample.height = 96;
@@ -411,6 +751,12 @@
     return ranked.map(({ center }) => rgbToHex(center.map(Math.round)));
   }
 
+  function extractProjectPalette(colorCount) {
+    const sources = [state.sourceImage, state.lowerImage].filter(Boolean);
+    return window.projectPalette?.extract(sources, colorCount)
+      || (state.sourceImage ? extractPalette(state.sourceImage, colorCount) : state.harmonious.slice(0, colorCount));
+  }
+
   function nearestCenter(color, centers) {
     let bestIndex = 0;
     let bestDistance = Infinity;
@@ -448,17 +794,24 @@
   }
 
   function createSwatch(color, group) {
+    const selectedColor = state.paletteTarget === "text"
+      ? (state.textLayers.left.color || state.textLayers.right.color || state.textLayers.center.color || state.textLayers.rail.color || "")
+      : state.background;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `swatch${state.background.toLowerCase() === color.toLowerCase() ? " selected" : ""}`;
+    button.className = `swatch${selectedColor.toLowerCase() === color.toLowerCase() ? " selected" : ""}`;
     button.style.setProperty("--swatch-color", color);
     button.title = `${group} color ${color.toUpperCase()}`;
     button.setAttribute("aria-label", button.title);
-    button.setAttribute("aria-pressed", state.background.toLowerCase() === color.toLowerCase() ? "true" : "false");
+    button.setAttribute("aria-pressed", selectedColor.toLowerCase() === color.toLowerCase() ? "true" : "false");
     button.addEventListener("click", () => {
-      state.background = color;
-      $("#customColor").value = color;
-      $("#colorValue").textContent = color.toUpperCase();
+      if (state.paletteTarget === "text") {
+        Object.values(state.textLayers).forEach((layer) => { layer.color = color; });
+      } else {
+        state.background = color;
+        $("#customColor").value = color;
+        $("#colorValue").textContent = color.toUpperCase();
+      }
       renderSwatches();
       render();
     });
@@ -485,7 +838,6 @@
   function resetComposition() {
     state.effect = "original";
     state.effectSize = 12;
-    state.pixelColorSteps = 0;
     state.pixelContrast = 0;
     state.layout = "orbit";
     state.activeLayer = "subject";
@@ -535,8 +887,6 @@
     });
     effectSize.value = state.effectSize;
     effectSizeOutput.textContent = state.effectSize;
-    pixelColorSteps.value = state.pixelColorSteps;
-    pixelColorStepsOutput.textContent = state.pixelColorSteps;
     pixelContrast.value = state.pixelContrast;
     pixelContrastOutput.textContent = state.pixelContrast > 0 ? `+${state.pixelContrast}%` : "0";
     $("#pixelControls").hidden = state.effect !== "pixel";
@@ -561,20 +911,28 @@
     $("#creditInput").value = state.copy.credit;
     $("#customColor").value = state.background;
     $("#colorValue").textContent = state.background.toUpperCase();
+    $("#foregroundPaletteTarget").value = state.paletteTarget;
+    $$('[data-canvas-layer]').forEach((zone) => zone.classList.toggle("selected", zone.dataset.canvasLayer === state.activeLayer));
     activeLayerLabel.textContent = state.activeLayer === "subject"
       ? "TOP SUBJECT ACTIVE"
-      : "LOWER PHOTO ACTIVE";
+      : state.activeLayer === "photo" ? "LOWER PHOTO ACTIVE" : "CLICK A LAYER TO SELECT";
     updateLayerScaleControl();
   }
 
   function selectActiveLayer(layer, openControls = false) {
-    if (layer !== "subject" && layer !== "photo") return;
+    if (layer !== null && layer !== "subject" && layer !== "photo") return;
     state.activeLayer = layer;
     if (openControls) $("#positionControls").open = true;
     syncControls();
   }
 
   function updateLayerScaleControl() {
+    if (!state.activeLayer) {
+      layerScale.disabled = true;
+      layerScaleOutput.textContent = "—";
+      return;
+    }
+    layerScale.disabled = false;
     const layer = state[state.activeLayer];
     const percent = Math.round(layer.scale * 100);
     layerScale.value = percent;
@@ -651,6 +1009,7 @@
 
   function drawTopSubject(target, topRect) {
     const bounds = state.foregroundBounds;
+    if (!bounds) return;
     const geometry = subjectGeometry(topRect);
     target.save();
     target.beginPath();
@@ -685,20 +1044,14 @@
       bounds.x, bounds.y, bounds.width, bounds.height,
       0, 0, pixelCanvas.width, pixelCanvas.height
     );
-    if (state.pixelColorSteps > 0 || state.pixelContrast > 0) {
+    if (state.pixelContrast > 0) {
       const frame = pctx.getImageData(0, 0, pixelCanvas.width, pixelCanvas.height);
       const contrast = 1 + state.pixelContrast / 100;
-      const steps = Math.max(2, state.pixelColorSteps);
       for (let index = 0; index < frame.data.length; index += 4) {
         if (frame.data[index + 3] < 8) continue;
         for (let channel = 0; channel < 3; channel += 1) {
           let value = frame.data[index + channel];
-          if (state.pixelContrast > 0) {
-            value = clamp((value - 128) * contrast + 128, 0, 255);
-          }
-          if (state.pixelColorSteps > 0) {
-            value = Math.round(value / 255 * (steps - 1)) * 255 / (steps - 1);
-          }
+          value = clamp((value - 128) * contrast + 128, 0, 255);
           frame.data[index + channel] = value;
         }
       }
@@ -1134,18 +1487,12 @@
   }));
 
   $$("[data-layer]").forEach((button) => button.addEventListener("click", () => {
-    selectActiveLayer(button.dataset.layer);
+    selectActiveLayer(state.activeLayer === button.dataset.layer ? null : button.dataset.layer);
   }));
 
   effectSize.addEventListener("input", () => {
     state.effectSize = Number(effectSize.value);
     effectSizeOutput.textContent = state.effectSize;
-    render();
-  });
-
-  pixelColorSteps.addEventListener("input", () => {
-    state.pixelColorSteps = Number(pixelColorSteps.value);
-    pixelColorStepsOutput.textContent = state.pixelColorSteps;
     render();
   });
 
@@ -1156,6 +1503,7 @@
   });
 
   layerScale.addEventListener("input", () => {
+    if (!state.activeLayer) return;
     state[state.activeLayer].scale = Number(layerScale.value) / 100;
     layerScaleOutput.textContent = `${layerScale.value}%`;
     render();
@@ -1194,13 +1542,44 @@
       showToast("Add an image to calculate its palette.");
       return;
     }
-    state.harmonious = extractPalette(state.sourceImage, 5);
+    state.harmonious = extractProjectPalette(5);
     state.contrast = buildContrastPalette(state.harmonious);
     state.background = selectStrongBackground(state.harmonious);
     renderSwatches();
     syncControls();
     render();
     showToast("Palette recalculated from the source image.");
+  });
+
+  $("#foregroundPaletteTarget").addEventListener("change", (event) => {
+    state.paletteTarget = event.target.value;
+    renderSwatches();
+  });
+
+  $("#foregroundSelectAll").addEventListener("click", () => {
+    state.foregroundAssets.forEach((asset) => { asset.selected = true; });
+    composeForegroundAssets();
+  });
+
+  $("#foregroundClearAssets").addEventListener("click", () => {
+    state.foregroundAssets.forEach((asset) => { asset.selected = false; });
+    composeForegroundAssets();
+  });
+
+  $("#manualExtractButton").addEventListener("click", openPointExtractor);
+  assetExtractorSource.addEventListener("click", extractAssetAtPoint);
+  $("#assetExtractorClose").addEventListener("click", closePointExtractor);
+  $("#assetExtractorCancel").addEventListener("click", closePointExtractor);
+  assetExtractorUse.addEventListener("click", addPointExtractionAsset);
+  assetExtractorDialog.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closePointExtractor();
+  });
+  assetExtractorDialog.addEventListener("close", () => {
+    pointExtractionController?.abort();
+    pointExtractionController = null;
+    clearPointExtractionResult();
+    assetExtractorMarker.hidden = true;
+    assetExtractorScan.hidden = true;
   });
 
   $("#suggestCopy").addEventListener("click", () => {
@@ -1225,8 +1604,9 @@
     if (!state.sourceImage || state.processing) return;
     const point = canvasPoint(event);
     const layer = event.currentTarget.dataset.canvasLayer;
+    const wasSelected = state.activeLayer === layer;
     selectActiveLayer(layer, true);
-    dragging = { point, pointerId: event.pointerId, target: event.currentTarget };
+    dragging = { point, pointerId: event.pointerId, target: event.currentTarget, layer, wasSelected, moved: false };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -1235,7 +1615,8 @@
     const point = canvasPoint(event);
     const deltaX = point.x - dragging.point.x;
     const deltaY = point.y - dragging.point.y;
-    if (state.activeLayer === "subject") {
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 2) dragging.moved = true;
+    if (dragging.layer === "subject") {
       state.subject.x = clamp(state.subject.x + deltaX / 900, -0.1, 1.1);
       state.subject.y = clamp(state.subject.y + deltaY / 632, -0.15, 1.15);
     } else {
@@ -1249,15 +1630,19 @@
   const stopDragging = (event) => {
     if (!dragging || dragging.pointerId !== event.pointerId) return;
     const captureTarget = dragging.target;
+    const shouldDeselect = dragging.wasSelected && !dragging.moved;
     dragging = null;
     captureTarget.releasePointerCapture?.(event.pointerId);
+    if (shouldDeselect) selectActiveLayer(null);
   };
   $$("[data-canvas-layer]").forEach((zone) => {
     zone.addEventListener("pointerdown", startLayerDrag);
     zone.addEventListener("pointermove", moveLayer);
     zone.addEventListener("pointerup", stopDragging);
     zone.addEventListener("pointercancel", stopDragging);
-    zone.addEventListener("click", () => selectActiveLayer(zone.dataset.canvasLayer, true));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && document.body.dataset.activeTool === "foreground") selectActiveLayer(null);
   });
 
   const foregroundExportController = {
@@ -1278,6 +1663,7 @@
     const activeTool = document.body.dataset.activeTool;
     if (activeTool === "poetic") return window.poeticFragments;
     if (activeTool === "contour") return window.contourLoom;
+    if (activeTool === "index") return window.imageIndex;
     return foregroundExportController;
   }
 
@@ -1287,6 +1673,7 @@
       foreground: "Foreground Study",
       poetic: "Poetic Fragments",
       contour: "Contour Loom",
+      index: "Image Index",
     };
     const controller = activeExportController();
     const options = controller?.getExportOptions?.() || { canExport: false, motionAvailable: false, outputWidth: 900 };
@@ -1326,7 +1713,7 @@
   }
 
   function activateTool(tool) {
-    const availableTools = new Set(["foreground", "poetic", "contour"]);
+    const availableTools = new Set(["foreground", "poetic", "contour", "index"]);
     const nextTool = availableTools.has(tool) ? tool : "foreground";
     const previousTool = document.body.dataset.activeTool;
     if (previousTool !== nextTool && previousTool === "poetic") window.poeticFragments?.deactivate?.();
@@ -1346,6 +1733,9 @@
     } else if (nextTool === "contour") {
       document.title = "Contour Loom — Field/Study";
       window.contourLoom?.activate();
+    } else if (nextTool === "index") {
+      document.title = "Image Index — Field/Study";
+      window.imageIndex?.activate();
     } else {
       document.title = "Foreground Study — Field/Study";
       $("#fileNameHeader").textContent = state.sourceImage
@@ -1363,6 +1753,7 @@
     const activeTool = document.body.dataset.activeTool;
     if (activeTool === "poetic") window.poeticFragments?.reset();
     else if (activeTool === "contour") window.contourLoom?.reset();
+    else if (activeTool === "index") window.imageIndex?.reset();
     else resetComposition();
   });
   $("#exportButton").addEventListener("click", openExportDialog);

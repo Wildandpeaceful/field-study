@@ -71,6 +71,8 @@
     textColor: "#171914",
     motifColor: "#171914",
     maskColor: "#f5f3ee",
+    palette: ["#f5f3ee", "#171914", "#7d745f", "#d6ff45"],
+    paletteTarget: "fieldColor",
     leftTitle: "Chromatic Field Study",
     leftNote: "a quiet geometry gathered from light",
     rightTitle: "Woven Contour Motif",
@@ -593,6 +595,7 @@
       state.fileBase = safeFileBase(file.name);
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
       state.textureTone = averageTextureColor();
+      refreshProjectPalette(false);
       const imageThumb = $("#contourTextureThumb");
       const videoThumb = $("#contourTextureVideoThumb");
       if (nextKind === "video") {
@@ -703,6 +706,7 @@
       $("#contourMaskPreview").hidden = false;
       $("#contourMaskActions").hidden = false;
       rebuildContour();
+      refreshProjectPalette(false);
       suggestCopy(false);
       updateReadyState();
       syncControls();
@@ -841,6 +845,10 @@
   }
 
   function resetSelectedPosition() {
+    if (!state.activeLayer) {
+      showToast("Select a layer before resetting its position.");
+      return;
+    }
     if (state.activeLayer === "motif") resetMotifPosition(false);
     else if (state.activeLayer === "echo") resetEchoPosition(false);
     else resetPhotoPosition(false);
@@ -1327,6 +1335,11 @@
   }
 
   function selectLayer(layer, openControls = false) {
+    if (layer === null) {
+      state.activeLayer = null;
+      syncControls();
+      return;
+    }
     if (layer === "echo" && !state.lowerEcho) {
       showToast("Turn on Lower contour echo before selecting that layer.");
       return;
@@ -1343,11 +1356,40 @@
 
   function updateLayerStatus() {
     const treatmentLabels = { woven: "WOVEN MOTIF", solid: "SOLID MOTIF", original: "ORIGINAL MARK" };
-    $("#contourLayerStatus").textContent = state.activeLayer === "motif"
+    $("#contourLayerStatus").textContent = state.activeLayer === null
+      ? "CLICK AN ELEMENT TO SELECT"
+      : state.activeLayer === "motif"
       ? treatmentLabels[state.upperTreatment] + " · " + state.cells.length + " CELLS"
       : state.activeLayer === "echo"
         ? `LOWER ECHO · ${state.linkContours ? "LINKED" : "INDEPENDENT"}`
         : "LOWER PHOTO ACTIVE";
+  }
+
+  function refreshProjectPalette(showMessage = false) {
+    const sources = [state.textureImage, state.maskImage].filter(Boolean);
+    if (!sources.length) {
+      if (showMessage) showToast("Add texture or contour media to find its project colors.");
+      return;
+    }
+    state.palette = window.projectPalette?.extract(sources, 10) || state.palette;
+    renderProjectPalette();
+    if (showMessage) showToast("Project colors refreshed from the current source frames.");
+  }
+
+  function renderProjectPalette() {
+    window.projectPalette?.render(
+      $("#contourPaletteSwatches"),
+      state.palette,
+      (color) => {
+        state[state.paletteTarget] = color;
+        if (state.paletteTarget === "textColor") {
+          Object.values(state.textLayers).forEach((layer) => { layer.color = color; });
+        }
+        syncControls();
+        render();
+      },
+      state[state.paletteTarget]
+    );
   }
 
   function syncControls() {
@@ -1428,14 +1470,21 @@
     $("#contourMaskColor").value = state.maskColor;
     $("#contourMaskValue").textContent = state.maskColor.toUpperCase();
     const layerScaleControl = $("#contourLayerScale");
+    layerScaleControl.disabled = !state.activeLayer;
     layerScaleControl.min = state.activeLayer === "photo" ? "65" : "40";
-    layerScaleControl.max = state.activeLayer === "photo" ? "250" : "500";
-    layerScaleControl.value = Math.round(state[state.activeLayer].scale * 100);
-    $("#contourLayerScaleOutput").textContent = Math.round(state[state.activeLayer].scale * 100) + "%";
+    layerScaleControl.max = state.activeLayer === "photo" ? "250" : "800";
+    if (state.activeLayer) {
+      layerScaleControl.value = Math.round(state[state.activeLayer].scale * 100);
+      $("#contourLayerScaleOutput").textContent = Math.round(state[state.activeLayer].scale * 100) + "%";
+    } else {
+      $("#contourLayerScaleOutput").textContent = "—";
+    }
     $("#contourCanvasDimensions").textContent = state.outputWidth + " × " + Math.round(state.outputWidth * 4 / 3) + " PX";
     updateLayerStatus();
     $("#contourDragHintText").textContent = state.linkContours
       ? "Upper and lower contours are linked"
+      : state.activeLayer === null
+        ? "Click a contour or the lower photo to select it"
       : state.activeLayer === "echo"
         ? "Drag the lower half to move only the echo"
         : state.activeLayer === "motif"
@@ -1488,6 +1537,8 @@
         : ["photo", "echo"].includes(state.activeLayer);
       zone.classList.toggle("selected", selected);
     });
+    $("#contourPaletteTarget").value = state.paletteTarget;
+    renderProjectPalette();
     const iconMark = $("#contourIconSourceMark");
     const iconNote = $("#contourIconSourceNote");
     if (state.lucideIcon) {
@@ -1749,8 +1800,20 @@
     };
   }
 
-  function canvasLayerForZone(zoneLayer) {
-    if (zoneLayer === "photo" && state.activeLayer === "echo" && state.lowerEcho) return "echo";
+  function pointHitsLowerEcho(point) {
+    if (!state.lowerEcho || !state.bounds || !state.cells.length || point.y < SPLIT_Y) return false;
+    const geometry = motifGeometry(state.echo);
+    if (!geometry) return false;
+    const localY = point.y - SPLIT_Y;
+    const padding = Math.max(8, geometry.cellSize * 0.65);
+    return point.x >= geometry.x - padding
+      && point.x <= geometry.x + geometry.width + padding
+      && localY >= geometry.y - padding
+      && localY <= geometry.y + geometry.height + padding;
+  }
+
+  function canvasLayerForPoint(zoneLayer, point) {
+    if (zoneLayer === "photo" && pointHitsLowerEcho(point)) return "echo";
     return zoneLayer;
   }
 
@@ -1762,9 +1825,11 @@
 
   function startDrag(event) {
     if (!state.textureImage && !state.maskImage) return;
-    const layer = canvasLayerForZone(event.currentTarget.dataset.contourCanvasLayer);
+    const point = canvasPoint(event);
+    const layer = canvasLayerForPoint(event.currentTarget.dataset.contourCanvasLayer, point);
+    const wasSelected = state.activeLayer === layer;
     selectLayer(layer, true);
-    state.dragging = { layer, point: canvasPoint(event), pointerId: event.pointerId, target: event.currentTarget };
+    state.dragging = { layer, point, pointerId: event.pointerId, target: event.currentTarget, wasSelected, moved: false };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -1773,6 +1838,7 @@
     const point = canvasPoint(event);
     const deltaX = point.x - state.dragging.point.x;
     const deltaY = point.y - state.dragging.point.y;
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 2) state.dragging.moved = true;
     if (["motif", "echo"].includes(state.dragging.layer)) {
       const transform = state[state.dragging.layer];
       transform.x = clamp(transform.x + deltaX / WIDTH, -0.5, 1.5);
@@ -1789,8 +1855,10 @@
   function stopDrag(event) {
     if (!state.dragging || state.dragging.pointerId !== event.pointerId) return;
     const target = state.dragging.target;
+    const shouldDeselect = state.dragging.wasSelected && !state.dragging.moved;
     state.dragging = null;
     target.releasePointerCapture?.(event.pointerId);
+    if (shouldDeselect) selectLayer(null);
   }
 
   function wireDropZone(zone, input, handler) {
@@ -1973,7 +2041,9 @@
     const labels = { woven: "Woven texture", solid: "Solid motif", original: "Original mark" };
     showToast(`${labels[state.upperTreatment]} active in the upper field.`);
   }));
-  $$('[data-contour-layer]').forEach((button) => button.addEventListener("click", () => selectLayer(button.dataset.contourLayer)));
+  $$('[data-contour-layer]').forEach((button) => button.addEventListener("click", () => {
+    selectLayer(state.activeLayer === button.dataset.contourLayer ? null : button.dataset.contourLayer);
+  }));
   $("#contourLinkPositions").addEventListener("change", (event) => {
     state.linkContours = event.target.checked;
     if (state.linkContours) state.echo = { ...state.motif };
@@ -1984,6 +2054,7 @@
       : "Contour placements unlinked · each can now move independently.");
   });
   $("#contourLayerScale").addEventListener("input", (event) => {
+    if (!state.activeLayer) return;
     state[state.activeLayer].scale = Number(event.target.value) / 100;
     syncLinkedContourTransform(state.activeLayer);
     syncControls();
@@ -2032,12 +2103,19 @@
       syncControls();
       render();
     }));
+  $("#contourRefreshPalette").addEventListener("click", () => refreshProjectPalette(true));
+  $("#contourPaletteTarget").addEventListener("change", (event) => {
+    state.paletteTarget = event.target.value;
+    renderProjectPalette();
+  });
   $$('[data-contour-canvas-layer]').forEach((zone) => {
     zone.addEventListener("pointerdown", startDrag);
     zone.addEventListener("pointermove", moveDrag);
     zone.addEventListener("pointerup", stopDrag);
     zone.addEventListener("pointercancel", stopDrag);
-    zone.addEventListener("click", () => selectLayer(canvasLayerForZone(zone.dataset.contourCanvasLayer), true));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && document.body.dataset.activeTool === "contour") selectLayer(null);
   });
 
   if ("IntersectionObserver" in window) {

@@ -21,6 +21,7 @@
           <button type="button" class="selected" data-tool-switch="foreground" aria-pressed="true"><span>01</span> Foreground Study</button>
           <button type="button" data-tool-switch="poetic" aria-pressed="false"><span>02</span> Poetic Fragments</button>
           <button type="button" data-tool-switch="contour" aria-pressed="false"><span>03</span> Contour Loom</button>
+          <button type="button" data-tool-switch="index" aria-pressed="false"><span>04</span> Image Index</button>
         </nav>
         <div class="header-meta" aria-label="Project status">
           <span class="privacy-dot"></span>
@@ -75,6 +76,16 @@
               <span class="status-light"></span>
               <span id="processStatusText">Waiting for a subject image</span>
             </div>
+            <div class="foreground-assets" id="foregroundAssetPanel" hidden>
+              <div class="foreground-assets-heading"><span>EXTRACTED ASSETS</span><div><button type="button" id="foregroundSelectAll">All</button><button type="button" id="foregroundClearAssets">None</button></div></div>
+              <div class="foreground-asset-grid" id="foregroundAssetGrid" role="group" aria-label="Choose extracted foreground assets"></div>
+              <p>Click an asset to include or exclude it from the upper study and lower silhouette.</p>
+              <button class="extract-by-click-action" id="manualExtractButton" type="button">
+                <span aria-hidden="true">＋</span>
+                <span><strong>Extract asset by click</strong><small>Select any person or object in the source image</small></span>
+                <i aria-hidden="true">→</i>
+              </button>
+            </div>
             <div class="lower-source-block" id="lowerSourceBlock" hidden>
               <p class="sub-input-label">LOWER-FRAME IMAGE</p>
               <label class="drop-zone" id="lowerDropZone" for="lowerFileInput">
@@ -115,7 +126,7 @@
             <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Click a half to select it, then drag to reposition</p>
             <label class="range-row" for="layerScale">
               <span>Layer scale</span>
-              <input id="layerScale" type="range" min="60" max="180" value="100" />
+              <input id="layerScale" type="range" min="20" max="600" value="100" />
               <output id="layerScaleOutput">100%</output>
             </label>
             <label class="toggle-row" id="silhouetteToggleRow" for="showSilhouette">
@@ -150,13 +161,8 @@
               <output id="effectSizeOutput">12</output>
             </label>
             <div class="pixel-controls" id="pixelControls" hidden>
-              <label class="range-row" for="pixelColorSteps">
-                <span>Color steps</span>
-                <input id="pixelColorSteps" type="range" min="0" max="8" value="0" />
-                <output id="pixelColorStepsOutput">0</output>
-              </label>
               <label class="range-row" for="pixelContrast">
-                <span>Contrast</span>
+                <span>Optional contrast</span>
                 <input id="pixelContrast" type="range" min="0" max="60" value="0" />
                 <output id="pixelContrastOutput">0</output>
               </label>
@@ -172,6 +178,7 @@
           </summary>
           <div class="section-body">
             <div class="section-tool-row"><button class="small-action" id="refreshPalette" type="button">Recalculate palette</button></div>
+            <label class="palette-target-row" for="foregroundPaletteTarget"><span>Apply swatches to</span><select id="foregroundPaletteTarget"><option value="background">Upper field</option><option value="text">All editorial text</option></select></label>
             <div class="palette-block">
               <div class="palette-label"><span>HARMONIOUS</span><small>from subject image</small></div>
               <div class="swatch-row" id="harmoniousSwatches" aria-label="Harmonious colors"></div>
@@ -476,6 +483,16 @@
           </div>
         </details>
 
+        <details class="control-section universal-palette-section" aria-labelledby="poeticPaletteHeading">
+          <summary class="section-heading"><span>06</span><h2 id="poeticPaletteHeading">Project palette</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="poeticRefreshPalette" type="button">Find image colors</button></div>
+            <label class="palette-target-row" for="poeticPaletteTarget"><span>Apply swatches to</span><select id="poeticPaletteTarget"><option value="background">Upper field</option><option value="text">Caption text</option></select></label>
+            <div class="universal-swatch-grid" id="poeticPaletteSwatches" aria-label="Poetic Fragments image colors"></div>
+            <p class="palette-source-note">Colors are sampled from the current image, GIF frame, or video frame.</p>
+          </div>
+        </details>
+
       </aside>
 
       <section class="workspace poetic-workspace" aria-label="Poetic Fragments preview">
@@ -706,7 +723,7 @@
             <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg><span id="contourDragHintText">Upper and lower contours are linked</span></p>
             <label class="range-row" for="contourLayerScale">
               <span>Layer scale</span>
-              <input id="contourLayerScale" type="range" min="40" max="500" value="100" />
+              <input id="contourLayerScale" type="range" min="40" max="800" value="100" />
               <output id="contourLayerScaleOutput">100%</output>
             </label>
             <button class="small-action contour-reset-selected" id="contourResetSelectedLayer" type="button">Reset selected placement</button>
@@ -786,13 +803,17 @@
           </div>
         </details>
 
-        <details class="control-section copy-section" aria-labelledby="contourSurfaceHeading">
+        <details class="control-section copy-section universal-palette-section" aria-labelledby="contourSurfaceHeading">
           <summary class="section-heading">
             <span>07</span>
-            <h2 id="contourSurfaceHeading">Field & color</h2>
+            <h2 id="contourSurfaceHeading">Project palette & color</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="contourRefreshPalette" type="button">Find source colors</button></div>
+            <label class="palette-target-row" for="contourPaletteTarget"><span>Apply swatches to</span><select id="contourPaletteTarget"><option value="fieldColor">Upper field</option><option value="textColor">All editorial text</option><option value="motifColor">Solid motif</option><option value="maskColor">Lower echo</option></select></label>
+            <div class="universal-swatch-grid" id="contourPaletteSwatches" aria-label="Contour Loom source colors"></div>
+            <p class="palette-source-note">Combines colors from both the texture and contour sources.</p>
             <label class="toggle-row contour-dot-toggle" for="contourShowDots">
               <span><strong>Dotted field</strong><small>Show the registration grid above</small></span>
               <input id="contourShowDots" type="checkbox" checked />
@@ -857,6 +878,181 @@
         <p class="workspace-help"><span>TIP</span> Select Upper motif, Lower echo, or Lower photo, then drag directly on the artwork.</p>
       </section>
     </main>
+
+    <main class="studio image-index-studio" id="imageIndexStudio" data-tool-view="index" hidden>
+      <aside class="control-rail" aria-label="Image Index controls">
+        <div class="rail-intro image-index-intro">
+          <p class="eyebrow">COMPOSITION 04</p>
+          <h1>Image<br />Index</h1>
+          <p>Isolate a subject, map it into an irregular index, and turn local visual cues into editorial labels.</p>
+        </div>
+
+        <details class="control-section" open aria-labelledby="imageIndexSourceHeading">
+          <summary class="section-heading">
+            <span>01</span>
+            <h2 id="imageIndexSourceHeading">Source image</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <label class="drop-zone" id="imageIndexDropZone" for="imageIndexSourceInput">
+              <input id="imageIndexSourceInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+              <span class="drop-idle" id="imageIndexDropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose an index subject</strong><small>JPG, PNG, WebP, HEIC · processed locally</small></span>
+              </span>
+              <span class="source-preview" id="imageIndexSourcePreview" hidden>
+                <img id="imageIndexSourceThumb" alt="Image Index source preview" />
+                <span><strong id="imageIndexSourceName">Source image</strong><small id="imageIndexSourceMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="process-status" id="imageIndexProcessStatus" aria-live="polite">
+              <span class="status-light"></span>
+              <span id="imageIndexProcessStatusText">Waiting for an image</span>
+            </div>
+            <button class="reset-defaults-action" id="imageIndexResetDefaults" type="button"><span>Reset to defaults</span><small>Keep the image · clear inherited settings</small></button>
+          </div>
+        </details>
+
+        <details class="control-section" open aria-labelledby="imageIndexPositionHeading">
+          <summary class="section-heading">
+            <span>02</span>
+            <h2 id="imageIndexPositionHeading">Subject position</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Drag the isolated subject directly on the canvas</p>
+            <label class="range-row" for="imageIndexSubjectScale"><span>Scale</span><input id="imageIndexSubjectScale" type="range" min="45" max="240" value="100" /><output id="imageIndexSubjectScaleOutput">100%</output></label>
+            <label class="range-row" for="imageIndexSubjectX"><span>Horizontal</span><input id="imageIndexSubjectX" type="range" min="-15" max="115" value="50" /><output id="imageIndexSubjectXOutput">50%</output></label>
+            <label class="range-row" for="imageIndexSubjectY"><span>Vertical</span><input id="imageIndexSubjectY" type="range" min="-15" max="115" value="52" /><output id="imageIndexSubjectYOutput">52%</output></label>
+            <div class="section-tool-row image-index-tool-row"><button class="small-action" id="imageIndexResetSubject" type="button">Reset subject</button></div>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="imageIndexGridHeading">
+          <summary class="section-heading">
+            <span>03</span>
+            <h2 id="imageIndexGridHeading">Index structure</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="segmented-control image-index-layout-control" role="group" aria-label="Index structure style">
+              <button type="button" class="selected" data-index-layout="fragmented" aria-pressed="true">Fragmented</button>
+              <button type="button" data-index-layout="contained" aria-pressed="false">Contained</button>
+            </div>
+            <label class="range-row" for="imageIndexCellCount"><span>Cell count</span><input id="imageIndexCellCount" type="range" min="8" max="36" value="22" /><output id="imageIndexCellCountOutput">22</output></label>
+            <label class="range-row" for="imageIndexSpread"><span>Grid spread</span><input id="imageIndexSpread" type="range" min="65" max="130" value="100" /><output id="imageIndexSpreadOutput">100%</output></label>
+            <div class="section-tool-row image-index-tool-row"><button class="small-action" id="imageIndexReroll" type="button">Reroll structure</button></div>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="imageIndexTreatmentHeading">
+          <summary class="section-heading">
+            <span>04</span>
+            <h2 id="imageIndexTreatmentHeading">Cell treatment</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body image-index-form-body">
+            <label for="imageIndexSmearDirection">Stretch direction<select id="imageIndexSmearDirection"><option value="mixed">Mixed</option><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
+            <label class="range-row" for="imageIndexSmear"><span>Pixel stretch</span><input id="imageIndexSmear" type="range" min="0" max="100" value="72" /><output id="imageIndexSmearOutput">72%</output></label>
+            <label class="range-row" for="imageIndexWindows"><span>Clear windows</span><input id="imageIndexWindows" type="range" min="10" max="80" value="42" /><output id="imageIndexWindowsOutput">42%</output></label>
+            <label class="range-row" for="imageIndexLineWeight"><span>Line weight</span><input id="imageIndexLineWeight" type="range" min="1" max="6" value="2" /><output id="imageIndexLineWeightOutput">1.0 px</output></label>
+          </div>
+        </details>
+
+        <details class="control-section copy-section image-index-copy-section" aria-labelledby="imageIndexLabelsHeading">
+          <summary class="section-heading">
+            <span>05</span>
+            <h2 id="imageIndexLabelsHeading">Index labels</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="imageIndexRegenerateLabels" type="button">Rebuild local labels</button></div>
+            <label for="imageIndexLabels">One label per line<textarea id="imageIndexLabels" rows="8" spellcheck="false">SUBJECT
+ISOLATED
+FORM
+COLOR STUDY
+SHARP FOCUS
+OBJECT INDEX</textarea></label>
+            <label class="range-row" for="imageIndexFontSize"><span>Label size</span><input id="imageIndexFontSize" type="range" min="10" max="34" value="18" /><output id="imageIndexFontSizeOutput">18 px</output></label>
+          </div>
+        </details>
+
+        <details class="control-section universal-palette-section" aria-labelledby="imageIndexPaletteHeading">
+          <summary class="section-heading">
+            <span>06</span>
+            <h2 id="imageIndexPaletteHeading">Canvas palette</h2>
+            <i class="section-chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="imageIndexRefreshPalette" type="button">Find image colors</button></div>
+            <label class="palette-target-row" for="imageIndexPaletteTarget"><span>Apply swatches to</span><select id="imageIndexPaletteTarget"><option value="background">Background</option><option value="lineColor">Grid lines</option><option value="textColor">Label text</option></select></label>
+            <div class="universal-swatch-grid" id="imageIndexPaletteSwatches" aria-label="Image Index source colors"></div>
+            <label class="custom-color-row" for="imageIndexBackground"><span>Background</span><input id="imageIndexBackground" type="color" value="#ffffff" /><output id="imageIndexBackgroundOutput">#FFFFFF</output></label>
+            <label class="custom-color-row" for="imageIndexLineColor"><span>Grid lines</span><input id="imageIndexLineColor" type="color" value="#747474" /><output id="imageIndexLineColorOutput">#747474</output></label>
+            <label class="custom-color-row" for="imageIndexTextColor"><span>Label text</span><input id="imageIndexTextColor" type="color" value="#111111" /><output id="imageIndexTextColorOutput">#111111</output></label>
+          </div>
+        </details>
+      </aside>
+
+      <section class="workspace image-index-workspace" aria-label="Image Index preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status"><i></i> LIVE COMPOSITION</span>
+            <span id="imageIndexLayerStatus">SUBJECT INDEX ACTIVE</span>
+          </div>
+          <div>
+            <span>3:4</span>
+            <span id="imageIndexCanvasDimensions">900 × 1200 PX</span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell image-index-artboard-shell" id="imageIndexArtboardShell">
+            <canvas id="imageIndexCanvas" width="900" height="1200" tabindex="0" aria-label="Image Index composition. Drag the subject or use arrow keys to reposition it."></canvas>
+            <div class="empty-overlay" id="imageIndexEmptyOverlay">
+              <span class="image-index-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <strong>Begin with one subject</strong>
+              <p>Image Index isolates the subject locally, builds an editorial grid, and derives descriptive labels without an API key.</p>
+              <button type="button" id="imageIndexEmptyChooseButton">Choose image</button>
+            </div>
+            <div class="processing-overlay" id="imageIndexProcessingOverlay" hidden>
+              <span class="scan-frame"><i></i></span>
+              <strong>Building the image index</strong>
+              <small>Apple Vision is isolating and classifying the subject locally</small>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help"><span>TIP</span> Drag the subject, then reroll the structure to explore a new crop and label rhythm.</p>
+      </section>
+    </main>
+
+    <dialog class="asset-extractor-dialog" id="assetExtractorDialog" aria-labelledby="assetExtractorTitle">
+      <div class="asset-extractor-frame">
+        <header class="asset-extractor-header">
+          <div>
+            <p class="eyebrow">POINT EXTRACTION</p>
+            <h2 id="assetExtractorTitle">Click the object you want</h2>
+            <p>People, products, furniture, plants, signs, and other distinct objects can become separate foreground assets.</p>
+          </div>
+          <button class="export-dialog-close" id="assetExtractorClose" type="button" aria-label="Close point extraction">×</button>
+        </header>
+        <div class="asset-extractor-workspace" id="assetExtractorWorkspace">
+          <div class="asset-extractor-image-wrap" id="assetExtractorImageWrap">
+            <img id="assetExtractorSource" alt="Source image for point extraction" />
+            <img id="assetExtractorResult" alt="Proposed extracted asset" hidden />
+            <span class="asset-extractor-marker" id="assetExtractorMarker" hidden aria-hidden="true"><i></i></span>
+            <span class="asset-extractor-scan" id="assetExtractorScan" hidden aria-hidden="true"></span>
+          </div>
+        </div>
+        <footer class="asset-extractor-footer">
+          <p id="assetExtractorStatus" role="status" aria-live="polite"><strong>Choose an object</strong><small>Click near the center of its visible shape.</small></p>
+          <div>
+            <button class="asset-extractor-cancel" id="assetExtractorCancel" type="button">Cancel</button>
+            <button class="asset-extractor-use" id="assetExtractorUse" type="button" disabled>Add extracted asset</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
 
     <dialog class="export-dialog" id="exportDialog" aria-labelledby="exportDialogTitle">
       <div class="export-dialog-frame">
@@ -937,11 +1133,13 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <iframe name="fieldStudyDownload" title="Export download" hidden></iframe>
     <script src="/alignment-guides.js"></script>
+    <script src="/project-palette.js"></script>
     <script src="/editorial-text.js"></script>
     <script src="/app.js"></script>
     <script src="/poetic.js"></script>
     <script src="/vendor/omggif/omggif.js?v=1"></script>
     <script src="/contour.js"></script>
     <script src="/contour-icon-picker.js"></script>
+    <script src="/image-index.js"></script>
   </body>
 </html>

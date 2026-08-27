@@ -1,6 +1,6 @@
 # Field/Study
 
-A private, local-first editorial image studio with switchable art tools. Foreground Study isolates people and objects, Poetic Fragments weaves image crops through editable captions, and Contour Loom translates shape references into texture-filled pixel ornaments.
+A private, local-first editorial image studio with switchable art tools. Foreground Study isolates people and objects, Poetic Fragments weaves image crops through editable captions, Contour Loom translates shape references into texture-filled pixel ornaments, and Image Index maps isolated subjects into labeled editorial grids.
 
 ## Run it
 
@@ -30,14 +30,22 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The first launch compiles a
 - Selection boxes and handles are interface-only and never appear in PNG exports
 - Poetic Fragments keeps its caption and inline image fragments grouped during transforms
 
+### Shared project palettes and selection
+
+- Every workspace extracts a perceptually balanced palette from its current image, GIF frame, or video frame
+- Palette swatches can target the colors relevant to each composition, including fields, editorial text, grid lines, solid motifs, and lower echoes
+- Artwork layers can be selected directly on the canvas; clicking the selected layer again or pressing Escape clears the selection
+
 ### Foreground Study
 
 - Apple Vision foreground extraction
 - One-image and two-image workflows: reuse one photograph, or upload separate subject and lower-frame images
-- Original, pixel, and halftone subject treatments, with optional zero-to-disable color-step and contrast controls
+- Original, pixel, and halftone subject treatments, with optional zero-to-disable contrast and no required color quantization
 - Image-derived harmonious and contrast palettes
+- Multi-subject masks are split into individually selectable extracted assets that can be included or excluded from the study
+- Point-guided local extraction can isolate an arbitrary visible person or object—even when automatic foreground detection misses it—and add the result as another selectable asset
 - Three editorial layout systems
-- Independent subject and photograph positioning, selectable by clicking the upper or lower canvas half
+- Independent subject and photograph positioning, selectable by clicking the upper or lower canvas half, with scaling up to 600% for intentional out-of-frame crops
 - Editable, independently transformable title, note, style, and palette copy
 - Optional distributed word rail over the lower photo with automatic contrast
 - Collapsible controls, with Subject Treatment and Image Palette open by default
@@ -79,6 +87,16 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The first launch compiles a
 - 900 × 1200 and 1350 × 1800 still PNG export captures the current animation frame
 - Browser-native animated export records the full composition for 3–60 seconds (10 seconds by default), starting at the current texture and contour playheads and looping each moving source when needed
 
+### Image Index
+
+- One image upload returns a locally isolated foreground plus Apple Vision category hints without an external API key
+- Automatic labels combine local classification, image color, brightness, saturation, and orientation; every label remains directly editable
+- Deterministic fragmented or contained grids with 8–36 indexed cells and one-click structure rerolls
+- Mixed horizontal and vertical pixel-stretch cells, clear subject windows, blank cells, adjustable spread, line weight, type scale, and colors
+- Direct subject dragging with lime center-alignment guides, keyboard nudging, and independent scale and position controls
+- A composition-level Reset to defaults action keeps the current image while clearing inherited grid, color, type, and transform settings
+- 900 × 1200 and 1350 × 1800 PNG export through the shared export dialog
+
 Animated export remains entirely in the browser. Field/Study prefers MP4 when the browser's `MediaRecorder` supports it and falls back to WebM; enabled video sound is included when the browser can capture its audio track, while GIF exports are silent. Exact format support depends on the browser and operating system.
 
 Requires macOS 14 or later and Xcode Command Line Tools (or Xcode).
@@ -93,6 +111,6 @@ To rebuild the manifest after updating the vendored package, run:
 node scripts/build-lucide-manifest.mjs
 ```
 
-See `THIRD_PARTY_NOTICES.md` and `public/vendor/lucide/LICENSE` for acknowledgments and license terms.
+See `THIRD_PARTY_NOTICES.md` and the vendored license files for acknowledgments and license terms.
 
 Contour Loom decodes animated GIF sources locally with the vendored, MIT-licensed [omggif](https://github.com/deanm/omggif) library. See `public/vendor/omggif/LICENSE` for its license terms.

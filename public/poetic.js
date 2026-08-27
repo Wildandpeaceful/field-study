@@ -49,6 +49,8 @@
     fontSize: 36,
     background: "#efeee9",
     textColor: "#171914",
+    palette: ["#efeee9", "#171914", "#d6ff45"],
+    paletteTarget: "background",
     captionTransform: defaultCaptionTransform(),
     photo: { x: 0.5, y: 0.5, scale: 1 },
     outputWidth: 900,
@@ -377,6 +379,7 @@
       state.gifPlaying = Boolean(gifPlayer?.frameCount > 1);
       state.playbackRate = 1;
       state.sound = false;
+      state.palette = window.projectPalette?.extract([media], 10) || state.palette;
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
       state.activeFragment = -1;
 
@@ -784,6 +787,31 @@
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+    $("#poeticPaletteTarget").value = state.paletteTarget;
+    renderProjectPalette();
+  }
+
+  function refreshProjectPalette(showMessage = false) {
+    if (!state.image) {
+      if (showMessage) showToast("Add source media to find its project colors.");
+      return;
+    }
+    state.palette = window.projectPalette?.extract([state.image], 10) || state.palette;
+    renderProjectPalette();
+    if (showMessage) showToast("Project colors refreshed from the current source frame.");
+  }
+
+  function renderProjectPalette() {
+    window.projectPalette?.render(
+      $("#poeticPaletteSwatches"),
+      state.palette,
+      (color) => {
+        state[state.paletteTarget] = color;
+        syncControls();
+        render();
+      },
+      state[state.paletteTarget]
+    );
   }
 
   function reset() {
@@ -796,6 +824,7 @@
     state.fontSize = 36;
     state.background = "#efeee9";
     state.textColor = "#171914";
+    state.paletteTarget = "background";
     state.captionTransform = defaultCaptionTransform();
     state.photo = { x: 0.5, y: 0.5, scale: 1 };
     state.activeFragment = -1;
@@ -1111,6 +1140,11 @@
     state.textColor = event.target.value;
     syncControls();
     render();
+  });
+  $("#poeticRefreshPalette").addEventListener("click", () => refreshProjectPalette(true));
+  $("#poeticPaletteTarget").addEventListener("change", (event) => {
+    state.paletteTarget = event.target.value;
+    renderProjectPalette();
   });
   $("#poeticPhotoScale").addEventListener("input", (event) => {
     state.photo.scale = Number(event.target.value) / 100;

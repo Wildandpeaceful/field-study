@@ -81,14 +81,35 @@ class StudioHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self) -> None:
-        path = urlparse(self.path).path
+        request_url = urlparse(self.path)
+        path = request_url.path
         if path == "/api/export":
             self.handle_export()
             return
-        if path != "/api/segment":
+        if path not in {"/api/segment", "/api/index"}:
             self.send_json(404, {"error": "Not found"})
             return
 
+        point = None
+        if path == "/api/segment" and request_url.query:
+            query = parse_qs(request_url.query)
+            try:
+                x = float(query.get("x", [""])[0])
+                y = float(query.get("y", [""])[0])
+                if not (0 <= x <= 1 and 0 <= y <= 1):
+                    raise ValueError
+                point = (x, y)
+            except (TypeError, ValueError):
+                self.send_json(400, {"error": "Extraction coordinates must be between 0 and 1"})
+                return
+
+        self.handle_image_analysis(include_labels=path == "/api/index", point=point)
+
+    def handle_image_analysis(
+        self,
+        include_labels: bool = False,
+        point: tuple[float, float] | None = None,
+    ) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         content_type = self.headers.get("Content-Type", "application/octet-stream")
         if content_length <= 0:
@@ -115,6 +136,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
             with tempfile.TemporaryDirectory(prefix="field-study-") as tmp_dir:
                 source = Path(tmp_dir) / f"source{suffix}"
                 output = Path(tmp_dir) / "foreground.png"
+                analysis = Path(tmp_dir) / "analysis.json"
                 remaining = content_length
                 with source.open("wb") as handle:
                     while remaining:
@@ -127,8 +149,13 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     self.send_json(400, {"error": "Image upload ended early"})
                     return
 
+                command = [str(EXTRACTOR), str(source), str(output)]
+                if include_labels:
+                    command.append(str(analysis))
+                elif point is not None:
+                    command.extend(["--point", f"{point[0]:.8f}", f"{point[1]:.8f}"])
                 result = subprocess.run(
-                    [str(EXTRACTOR), str(source), str(output)],
+                    command,
                     capture_output=True,
                     text=True,
                     timeout=90,
@@ -140,6 +167,16 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     return
 
                 body = output.read_bytes()
+                if include_labels:
+                    metadata = {"labels": [], "warning": None}
+                    if analysis.exists():
+                        metadata.update(json.loads(analysis.read_text(encoding="utf-8")))
+                    self.send_json(200, {
+                        "foreground": "data:image/png;base64," + base64.b64encode(body).decode("ascii"),
+                        "labels": metadata.get("labels", []),
+                        "warning": metadata.get("warning"),
+                    })
+                    return
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Content-Length", str(len(body)))

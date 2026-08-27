@@ -19,3 +19,13 @@ Field/Study includes the dependency-free `omggif` GIF89a decoder so Contour Loom
 - Copyright: Dean McNamee, 2013
 - License: MIT
 - Vendored license: `public/vendor/omggif/LICENSE`
+
+## MediaPipe Tasks Vision and MagicTouch
+
+Field/Study includes the MediaPipe Tasks Vision 1.0.1 browser runtime and the MagicTouch interactive-segmentation model so artists can select arbitrary visible objects with a point prompt while remaining offline.
+
+- Project: [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/guide)
+- Source: [google-ai-edge/mediapipe](https://github.com/google-ai-edge/mediapipe)
+- Model: MagicTouch Interactive Segmenter
+- License: Apache License 2.0
+- Vendored license: `public/vendor/mediapipe/LICENSE`
