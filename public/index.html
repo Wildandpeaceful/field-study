@@ -32,7 +32,7 @@
       <div class="header-actions">
         <button class="text-button" id="resetButton" type="button">Reset</button>
         <button class="primary-action" id="exportButton" type="button">
-          <span>Export PNG</span>
+          <span>Export</span>
           <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v10m0 0 4-4m-4 4L6 8M3 14v3h14v-3" /></svg>
         </button>
       </div>
@@ -281,15 +281,6 @@
           </div>
         </details>
 
-        <div class="rail-footer">
-          <label for="exportSize">Output size
-            <select id="exportSize">
-              <option value="900">900 × 1200</option>
-              <option value="1350">1350 × 1800</option>
-            </select>
-          </label>
-          <button class="rail-export" id="railExportButton" type="button">Export 3:4 PNG <span>↓</span></button>
-        </div>
       </aside>
 
       <section class="workspace" aria-label="Live composition preview">
@@ -333,31 +324,43 @@
         <div class="rail-intro poetic-intro">
           <p class="eyebrow">COMPOSITION 02</p>
           <h1>Poetic<br />Fragments</h1>
-          <p>Lift small windows from a photograph and weave them into a line of text.</p>
+          <p>Lift small windows from still or moving media and weave them into a line of text.</p>
         </div>
 
         <details class="control-section" open aria-labelledby="poeticSourceHeading">
           <summary class="section-heading">
             <span>01</span>
-            <h2 id="poeticSourceHeading">Source image</h2>
+            <h2 id="poeticSourceHeading">Source media</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
             <label class="drop-zone" id="poeticDropZone" for="poeticSourceInput">
-              <input id="poeticSourceInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <input id="poeticSourceInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-m4v" />
               <span class="drop-idle" id="poeticDropIdle">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
-                <span><strong>Choose a photograph</strong><small>or drop it here · JPG, PNG, WebP</small></span>
+                <span><strong>Choose source media</strong><small>Image, GIF, or video · detected automatically</small></span>
               </span>
               <span class="source-preview" id="poeticSourcePreview" hidden>
-                <img id="poeticSourceThumb" alt="Poetic Fragments source preview" />
-                <span><strong id="poeticSourceName">Source image</strong><small id="poeticSourceMeta">Ready</small></span>
+                <img id="poeticSourceThumb" alt="Poetic Fragments image or GIF preview" />
+                <video id="poeticSourceVideoThumb" aria-label="Poetic Fragments video preview" muted playsinline loop preload="metadata" hidden></video>
+                <span><strong id="poeticSourceName">Source media</strong><small id="poeticSourceMeta">Ready</small></span>
                 <em>Replace</em>
               </span>
             </label>
+            <div class="poetic-motion-controls" id="poeticMotionControls" hidden>
+              <div class="poetic-motion-row">
+                <button class="video-play-toggle" id="poeticPlayToggle" type="button" aria-pressed="false"><i aria-hidden="true"></i><span>Play</span></button>
+                <label for="poeticPlaybackSpeed"><span>Speed</span><input id="poeticPlaybackSpeed" type="range" min="25" max="200" step="25" value="100" /></label>
+                <output id="poeticPlaybackSpeedOutput">1×</output>
+                <button class="video-sound-toggle" id="poeticSoundToggle" type="button" aria-pressed="false" aria-label="Turn source video sound on" title="Sound off">
+                  <svg aria-hidden="true" viewBox="0 0 24 24"><path class="speaker" d="M4 10v4h4l5 4V6L8 10H4Z"/><path class="sound-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute-mark" d="m17 10 4 4m0-4-4 4"/></svg>
+                </button>
+              </div>
+              <small id="poeticMotionStatus">LOOP · 1× · SOUND OFF</small>
+            </div>
             <div class="process-status" id="poeticProcessStatus" aria-live="polite">
               <span class="status-light"></span>
-              <span id="poeticProcessStatusText">Waiting for a photograph</span>
+              <span id="poeticProcessStatusText">Waiting for source media</span>
             </div>
           </div>
         </details>
@@ -460,28 +463,19 @@
         <details class="control-section" id="poeticPhotoControls" aria-labelledby="poeticPhotoHeading">
           <summary class="section-heading">
             <span>05</span>
-            <h2 id="poeticPhotoHeading">Photo framing</h2>
+            <h2 id="poeticPhotoHeading">Source framing</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
-            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Drag the photo to reframe it</p>
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Drag the source to reframe it</p>
             <label class="range-row" for="poeticPhotoScale">
-              <span>Photo scale</span>
+              <span>Source scale</span>
               <input id="poeticPhotoScale" type="range" min="80" max="180" value="100" />
               <output id="poeticPhotoScaleOutput">100%</output>
             </label>
           </div>
         </details>
 
-        <div class="rail-footer">
-          <label for="poeticExportSize">Output size
-            <select id="poeticExportSize">
-              <option value="900">900 × 1200</option>
-              <option value="1350">1350 × 1800</option>
-            </select>
-          </label>
-          <button class="rail-export" id="poeticRailExport" type="button">Export 3:4 PNG <span>↓</span></button>
-        </div>
       </aside>
 
       <section class="workspace poetic-workspace" aria-label="Poetic Fragments preview">
@@ -501,9 +495,9 @@
             <div class="poetic-photo-selection" id="poeticPhotoSelection" aria-hidden="true"></div>
             <div class="empty-overlay" id="poeticEmptyOverlay">
               <span class="fragment-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-              <strong>Begin with a photograph</strong>
-              <p>Poetic Fragments will lift small windows from the image and weave them through your caption.</p>
-              <button type="button" id="poeticEmptyChooseButton">Choose photograph</button>
+              <strong>Begin with source media</strong>
+              <p>Poetic Fragments will lift moving or still windows from an image, GIF, or video and weave them through your caption.</p>
+              <button type="button" id="poeticEmptyChooseButton">Choose source media</button>
             </div>
           </div>
         </div>
@@ -522,40 +516,70 @@
         <details class="control-section" open aria-labelledby="contourSourcesHeading">
           <summary class="section-heading">
             <span>01</span>
-            <h2 id="contourSourcesHeading">Source images</h2>
+            <h2 id="contourSourcesHeading">Source media</h2>
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
-            <p class="sub-input-label">TEXTURE / LOWER-FRAME IMAGE</p>
+            <p class="sub-input-label">TEXTURE / LOWER-FRAME SOURCE</p>
             <label class="drop-zone" id="contourTextureDropZone" for="contourTextureInput">
-              <input id="contourTextureInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <input id="contourTextureInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-m4v" />
               <span class="drop-idle" id="contourTextureIdle">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
-                <span><strong>Choose the texture image</strong><small>Color source and lower photograph</small></span>
+                <span><strong id="contourTextureIdleTitle">Choose texture media</strong><small id="contourTextureIdleNote">Image, GIF, or video · detected automatically</small></span>
               </span>
               <span class="source-preview" id="contourTexturePreview" hidden>
                 <img id="contourTextureThumb" alt="Contour Loom texture preview" />
-                <span><strong id="contourTextureName">Texture image</strong><small id="contourTextureMeta">Ready</small></span>
+                <video id="contourTextureVideoThumb" muted playsinline loop preload="metadata" hidden></video>
+                <span><strong id="contourTextureName">Texture source</strong><small id="contourTextureMeta">Ready</small></span>
                 <em>Replace</em>
               </span>
             </label>
+            <div class="video-playback" id="contourVideoPlayback" hidden>
+              <button class="video-play-toggle" id="contourVideoPlayToggle" type="button" aria-pressed="false">
+                <i aria-hidden="true"></i><span>Play</span>
+              </button>
+              <label for="contourVideoPlayhead">
+                <span class="sr-only">Video playhead</span>
+                <input id="contourVideoPlayhead" type="range" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <output id="contourVideoTime">00:00 / 00:00</output>
+              <button class="video-sound-toggle" id="contourVideoSoundToggle" type="button" aria-pressed="false" aria-label="Turn texture video sound on" title="Sound off">
+                <svg aria-hidden="true" viewBox="0 0 20 20"><path class="speaker" d="M3 8h3l4-3v10l-4-3H3z"/><path class="sound-wave" d="M13 7c1.6 1.7 1.6 4.3 0 6m2-8c2.7 2.8 2.7 7.2 0 10"/><path class="mute-mark" d="m13 8 4 4m0-4-4 4"/></svg>
+              </button>
+              <small id="contourVideoSoundStatus">LOOP · SOUND OFF</small>
+            </div>
             <div class="source-actions" id="contourTextureActions" hidden>
               <button type="button" id="contourResetPhoto">↶ Reset photo position</button>
-              <button type="button" class="source-clear" id="contourClearTexture">Remove</button>
+              <button type="button" class="source-clear" id="contourClearTexture">Clear source</button>
             </div>
-            <p class="sub-input-label contour-mask-label">CONTOUR / SHAPE IMAGE</p>
+            <p class="sub-input-label contour-mask-label">CONTOUR / SHAPE SOURCE</p>
             <label class="drop-zone" id="contourMaskDropZone" for="contourMaskInput">
-              <input id="contourMaskInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <input id="contourMaskInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,video/x-m4v" />
               <span class="drop-idle" id="contourMaskIdle">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
-                <span><strong>Choose the contour image</strong><small>High-contrast shapes work especially well</small></span>
+                <span><strong id="contourMaskIdleTitle">Choose contour media</strong><small id="contourMaskIdleNote">Image, GIF, or video · transparency works best</small></span>
               </span>
               <span class="source-preview" id="contourMaskPreview" hidden>
                 <img id="contourMaskThumb" alt="Contour Loom shape preview" />
+                <video id="contourMaskVideoThumb" aria-label="Contour Loom shape video preview" muted playsinline loop preload="metadata" hidden></video>
                 <span><strong id="contourMaskName">Contour image</strong><small id="contourMaskMeta">Ready</small></span>
                 <em>Replace</em>
               </span>
             </label>
+            <div class="video-playback" id="contourMaskVideoPlayback" hidden>
+              <button class="video-play-toggle" id="contourMaskVideoPlayToggle" type="button" aria-pressed="false">
+                <i aria-hidden="true"></i><span>Play</span>
+              </button>
+              <label for="contourMaskVideoPlayhead">
+                <span class="sr-only">Contour video playhead</span>
+                <input id="contourMaskVideoPlayhead" type="range" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <output id="contourMaskVideoTime">00:00 / 00:00</output>
+              <button class="video-sound-toggle" id="contourMaskVideoSoundToggle" type="button" aria-pressed="false" aria-label="Turn contour video sound on" title="Sound off">
+                <svg aria-hidden="true" viewBox="0 0 20 20"><path class="speaker" d="M3 8h3l4-3v10l-4-3H3z"/><path class="sound-wave" d="M13 7c1.6 1.7 1.6 4.3 0 6m2-8c2.7 2.8 2.7 7.2 0 10"/><path class="mute-mark" d="m13 8 4 4m0-4-4 4"/></svg>
+              </button>
+              <small id="contourMaskVideoSoundStatus">ANIMATED MASK · LOOP · SOUND OFF</small>
+            </div>
             <div class="source-actions" id="contourMaskActions" hidden>
               <button type="button" id="contourResetMotif">↶ Reset motif position</button>
               <button type="button" class="source-clear" id="contourClearMask">Remove</button>
@@ -573,7 +597,7 @@
             <p class="source-mode-note contour-paste-note">Tip: paste an image with ⌘V / Ctrl+V while this tool is active.</p>
             <div class="process-status" id="contourProcessStatus" aria-live="polite">
               <span class="status-light"></span>
-              <span id="contourProcessStatusText">Waiting for texture and contour images</span>
+              <span id="contourProcessStatusText">Waiting for texture and contour sources</span>
             </div>
             <button class="swap-images-action" id="contourSwapImages" type="button" disabled>
               <span class="swap-icon" aria-hidden="true"><i>↑</i><i>↓</i></span>
@@ -622,6 +646,13 @@
               </label>
             </div>
             <div class="matrix-advanced">
+              <span class="micro-label">UPPER MOTIF TREATMENT</span>
+              <div class="segmented-control contour-upper-treatment" role="group" aria-label="Upper motif treatment">
+                <button type="button" class="selected" data-contour-upper-treatment="woven" aria-pressed="true">Woven</button>
+                <button type="button" data-contour-upper-treatment="solid" aria-pressed="false">Solid</button>
+                <button type="button" data-contour-upper-treatment="original" aria-pressed="false">Original</button>
+              </div>
+              <p class="treatment-mode-note" id="contourUpperTreatmentNote">Texture-filled pixels use the lower image or current animation frame.</p>
               <span class="micro-label">PIXEL CELL</span>
               <div class="segmented-control contour-cell-control" role="group" aria-label="Pixel cell shape">
                 <button type="button" class="selected" data-contour-cell="square" aria-pressed="true">Square</button>
@@ -663,15 +694,22 @@
           </summary>
           <div class="section-body">
             <div class="segmented-control contour-layer-control" role="group" aria-label="Contour Loom active layer">
-              <button type="button" class="selected" data-contour-layer="motif" aria-pressed="true">Pixel motif</button>
+              <button type="button" class="selected" data-contour-layer="motif" aria-pressed="true">Upper motif</button>
+              <button type="button" data-contour-layer="echo" aria-pressed="false">Lower echo</button>
               <button type="button" data-contour-layer="photo" aria-pressed="false">Lower photo</button>
             </div>
-            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg>Click either half to select it, then drag to reposition</p>
+            <label class="toggle-row contour-position-link" for="contourLinkPositions">
+              <span><strong>Link contour placements</strong><small>Upper motif and lower echo move together</small></span>
+              <input id="contourLinkPositions" type="checkbox" checked />
+              <i aria-hidden="true"></i>
+            </label>
+            <p class="drag-hint"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16M2 10h16M10 2 7 5m3-3 3 3m5 5-3-3m3 3-3 3M10 18l-3-3m3 3 3-3M2 10l3-3m-3 3 3 3" /></svg><span id="contourDragHintText">Upper and lower contours are linked</span></p>
             <label class="range-row" for="contourLayerScale">
               <span>Layer scale</span>
-              <input id="contourLayerScale" type="range" min="65" max="180" value="100" />
+              <input id="contourLayerScale" type="range" min="40" max="500" value="100" />
               <output id="contourLayerScaleOutput">100%</output>
             </label>
+            <button class="small-action contour-reset-selected" id="contourResetSelectedLayer" type="button">Reset selected placement</button>
           </div>
         </details>
 
@@ -708,13 +746,31 @@
             <p class="source-mode-note contour-copy-note">Local dual-image suggestions use color, contour density, and symmetry.</p>
             <label for="contourLeftCopy">Left / upper label<textarea id="contourLeftCopy" rows="3" maxlength="120">Chromatic Field Study&#10;a quiet geometry gathered from light</textarea></label>
             <label for="contourRightCopy">Right / lower label<textarea id="contourRightCopy" rows="3" maxlength="120">Woven Contour Motif&#10;Colorway: Moss · Ochre · Alabaster</textarea></label>
+            <div class="photo-rail-control">
+              <label class="toggle-row" for="contourShowPhotoWords">
+                <span><strong>Photo word rail</strong><small>Distribute words along the lower image or video</small></span>
+                <input id="contourShowPhotoWords" type="checkbox" />
+                <i aria-hidden="true"></i>
+              </label>
+              <div class="photo-word-fields" id="contourPhotoWordFields" hidden>
+                <label for="contourPhotoWords">Words on lower media<input id="contourPhotoWords" type="text" value="Contour Study · by Field Studio · Moving Texture" maxlength="140" /></label>
+                <label for="contourPhotoWordTone">Text tone
+                  <select id="contourPhotoWordTone">
+                    <option value="auto">Auto contrast</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </label>
+              </div>
+            </div>
             <div class="editorial-panel" id="contourEditorialPanel" data-editorial-panel>
               <div class="editorial-panel-heading"><span>SELECT TEXT LAYER</span><strong data-editorial-selected-label>Choose a label</strong></div>
               <div class="segmented-control editorial-layer-control" role="group" aria-label="Contour Loom text layer">
                 <button type="button" data-editorial-layer="left" aria-pressed="false">Left label</button>
                 <button type="button" data-editorial-layer="right" aria-pressed="false">Right label</button>
+                <button type="button" data-editorial-layer="rail" aria-pressed="false">Photo words</button>
               </div>
-              <p class="editorial-empty-note" data-editorial-empty>Click either label on the artwork to highlight and move it.</p>
+              <p class="editorial-empty-note" data-editorial-empty>Click a label or the photo words on the artwork to highlight and move it.</p>
               <div class="editorial-controls" data-editorial-controls hidden>
                 <div class="editorial-direct-row">
                   <div class="editorial-nudge" role="group" aria-label="Nudge selected label"><button type="button" data-editorial-nudge="up" aria-label="Move label up">↑</button><button type="button" data-editorial-nudge="left" aria-label="Move label left">←</button><button type="button" data-editorial-nudge="down" aria-label="Move label down">↓</button><button type="button" data-editorial-nudge="right" aria-label="Move label right">→</button></div>
@@ -742,6 +798,11 @@
               <input id="contourShowDots" type="checkbox" checked />
               <i aria-hidden="true"></i>
             </label>
+            <label class="toggle-row contour-echo-toggle" for="contourLowerEcho">
+              <span><strong>Lower contour echo</strong><small>Show the motif over the lower image or video</small></span>
+              <input id="contourLowerEcho" type="checkbox" checked />
+              <i aria-hidden="true"></i>
+            </label>
             <label class="custom-color-row" for="contourFieldColor">
               <span>Upper field</span>
               <input id="contourFieldColor" type="color" value="#f5f3ee" />
@@ -752,23 +813,19 @@
               <input id="contourTextColor" type="color" value="#171914" />
               <output id="contourTextValue">#171914</output>
             </label>
+            <label class="custom-color-row" for="contourMotifColor">
+              <span>Solid motif</span>
+              <input id="contourMotifColor" type="color" value="#171914" />
+              <output id="contourMotifValue">#171914</output>
+            </label>
             <label class="custom-color-row" for="contourMaskColor">
-              <span>Lower motif</span>
+              <span>Lower echo</span>
               <input id="contourMaskColor" type="color" value="#f5f3ee" />
               <output id="contourMaskValue">#F5F3EE</output>
             </label>
           </div>
         </details>
 
-        <div class="rail-footer">
-          <label for="contourExportSize">Output size
-            <select id="contourExportSize">
-              <option value="900">900 × 1200</option>
-              <option value="1350">1350 × 1800</option>
-            </select>
-          </label>
-          <button class="rail-export" id="contourRailExport" type="button">Export 3:4 PNG <span>↓</span></button>
-        </div>
       </aside>
 
       <section class="workspace contour-workspace" aria-label="Contour Loom preview">
@@ -786,20 +843,63 @@
           <div class="artboard-shell contour-artboard-shell" id="contourArtboardShell">
             <canvas id="contourCanvas" width="900" height="1200" aria-label="Contour Loom composition"></canvas>
             <div class="contour-half-zones" role="group" aria-label="Select and move a Contour Loom layer">
-              <button type="button" data-contour-canvas-layer="motif" aria-label="Select and move the pixel motif"><span>Pixel motif</span></button>
-              <button type="button" data-contour-canvas-layer="photo" aria-label="Select and move the lower photo"><span>Lower photo</span></button>
+              <button type="button" data-contour-canvas-layer="motif" aria-label="Select and move the upper motif"><span>Upper motif</span></button>
+              <button type="button" data-contour-canvas-layer="photo" aria-label="Select and move the lower photo or echo"><span id="contourLowerCanvasLayerLabel">Lower photo</span></button>
             </div>
             <div class="empty-overlay" id="contourEmptyOverlay">
               <span class="contour-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
               <strong>Begin with two images</strong>
-              <p>Add a texture photograph and a contour image. Contour Loom will translate the shape into a woven pixel ornament.</p>
-              <button type="button" id="contourEmptyChooseButton">Choose texture image</button>
+              <p>Add a texture image, GIF, or video and a contour shape. Contour Loom will translate the shape into a woven pixel ornament.</p>
+              <button type="button" id="contourEmptyChooseButton">Choose texture source</button>
             </div>
           </div>
         </div>
-        <p class="workspace-help"><span>TIP</span> Drag the upper motif or lower photograph directly on the artwork. Both source images stay local.</p>
+        <p class="workspace-help"><span>TIP</span> Select Upper motif, Lower echo, or Lower photo, then drag directly on the artwork.</p>
       </section>
     </main>
+
+    <dialog class="export-dialog" id="exportDialog" aria-labelledby="exportDialogTitle">
+      <div class="export-dialog-frame">
+        <header class="export-dialog-header">
+          <div>
+            <p class="eyebrow">EXPORT COMPOSITION</p>
+            <h2 id="exportDialogTitle">Choose a format</h2>
+            <p id="exportDialogTool">Foreground Study</p>
+          </div>
+          <button class="export-dialog-close" id="exportDialogClose" type="button" aria-label="Close export options">×</button>
+        </header>
+        <div class="export-dialog-settings">
+          <label for="exportDialogSize">
+            <span>Output size</span>
+            <select id="exportDialogSize">
+              <option value="900">900 × 1200</option>
+              <option value="1350">1350 × 1800</option>
+            </select>
+          </label>
+          <div class="animated-export-controls" id="animatedExportControls" hidden>
+            <label class="range-row" for="animatedClipDuration">
+              <span>Clip duration</span>
+              <input id="animatedClipDuration" type="range" min="3" max="60" step="1" value="10" />
+              <output id="animatedClipDurationOutput">10s</output>
+            </label>
+            <p>Starts at the current playhead and loops moving sources as needed.</p>
+          </div>
+        </div>
+        <div class="export-dialog-choices">
+          <button class="export-choice" id="exportImageChoice" type="button">
+            <span class="export-choice-mark" aria-hidden="true">▣</span>
+            <span><strong>Export image</strong><small>PNG · captures the current canvas frame</small></span>
+            <i aria-hidden="true">→</i>
+          </button>
+          <button class="export-choice export-choice-motion" id="animatedExport" type="button" hidden>
+            <span class="export-choice-mark" aria-hidden="true">▶</span>
+            <span><strong>Export 10s video</strong><small id="animatedExportFormat">Browser-native format detected at export</small></span>
+            <i aria-hidden="true">→</i>
+          </button>
+        </div>
+        <p class="export-dialog-note" id="exportDialogNote" role="status">Exports are rendered locally on this Mac.</p>
+      </div>
+    </dialog>
 
     <dialog class="icon-picker" id="contourIconPicker" aria-labelledby="contourIconPickerTitle">
       <div class="icon-picker-frame">
@@ -840,6 +940,7 @@
     <script src="/editorial-text.js"></script>
     <script src="/app.js"></script>
     <script src="/poetic.js"></script>
+    <script src="/vendor/omggif/omggif.js?v=1"></script>
     <script src="/contour.js"></script>
     <script src="/contour-icon-picker.js"></script>
   </body>

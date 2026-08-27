@@ -188,9 +188,16 @@
       if (state.sourceImage) {
         state.foregroundImage = createFallbackForeground(state.sourceImage);
         state.foregroundBounds = findAlphaBounds(state.foregroundImage);
-        setProcessStatus("error", "Vision found no clear subject · using a soft local fallback");
+        const visionRuntimeUnavailable = /ANECF|inference plan|CVPixelBuffer|VisionCore/i.test(error.message);
+        const statusMessage = visionRuntimeUnavailable
+          ? "Apple Vision is unavailable in this launch · using a soft local fallback"
+          : "Vision found no clear subject · using a soft local fallback";
+        const toastMessage = visionRuntimeUnavailable
+          ? "Apple Vision could not access its local model. Relaunch Field/Study normally for precise extraction."
+          : "A precise subject was not found; a soft fallback was applied.";
+        setProcessStatus("error", statusMessage);
         render();
-        showToast("A precise subject was not found; a soft fallback was applied.");
+        showToast(toastMessage);
       } else {
         emptyOverlay.hidden = false;
         setProcessStatus("error", error.message);
@@ -1214,12 +1221,6 @@
     render();
   }));
 
-  $("#exportSize").addEventListener("change", (event) => {
-    state.outputWidth = Number(event.target.value);
-    $("#canvasDimensions").textContent = `${state.outputWidth} × ${Math.round(state.outputWidth * 4 / 3)} PX`;
-    render();
-  });
-
   const startLayerDrag = (event) => {
     if (!state.sourceImage || state.processing) return;
     const point = canvasPoint(event);
@@ -1259,9 +1260,76 @@
     zone.addEventListener("click", () => selectActiveLayer(zone.dataset.canvasLayer, true));
   });
 
+  const foregroundExportController = {
+    exportPng,
+    getExportOptions: () => ({
+      canExport: Boolean(state.sourceImage && state.foregroundImage),
+      motionAvailable: false,
+      outputWidth: state.outputWidth,
+    }),
+    setOutputWidth: (width) => {
+      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      $("#canvasDimensions").textContent = `${state.outputWidth} × ${Math.round(state.outputWidth * 4 / 3)} PX`;
+      render();
+    },
+  };
+
+  function activeExportController() {
+    const activeTool = document.body.dataset.activeTool;
+    if (activeTool === "poetic") return window.poeticFragments;
+    if (activeTool === "contour") return window.contourLoom;
+    return foregroundExportController;
+  }
+
+  function syncExportDialog() {
+    const activeTool = document.body.dataset.activeTool || "foreground";
+    const labels = {
+      foreground: "Foreground Study",
+      poetic: "Poetic Fragments",
+      contour: "Contour Loom",
+    };
+    const controller = activeExportController();
+    const options = controller?.getExportOptions?.() || { canExport: false, motionAvailable: false, outputWidth: 900 };
+    const motionAvailable = Boolean(options.motionAvailable);
+    const clipDuration = Math.max(3, Math.min(60, Number(options.clipDuration) || 10));
+    const formatLabel = options.format?.label || "browser-native video";
+    $("#exportDialogTool").textContent = labels[activeTool];
+    $("#exportDialogSize").value = String(options.outputWidth || 900);
+    $("#exportImageChoice").disabled = !options.canExport || Boolean(options.recording);
+    $("#exportImageChoice small").textContent = `PNG · ${options.outputWidth || 900} × ${Math.round((options.outputWidth || 900) * 4 / 3)} · current frame`;
+    $("#animatedExportControls").hidden = !motionAvailable;
+    $("#animatedExport").hidden = !motionAvailable;
+    $("#animatedClipDuration").value = clipDuration;
+    $("#animatedClipDurationOutput").textContent = `${clipDuration}s`;
+    const motionChoice = $("#animatedExport");
+    motionChoice.disabled = !motionAvailable || Boolean(options.recording);
+    $("strong", motionChoice).textContent = options.recording
+      ? "Recording video"
+      : `Export ${clipDuration}s video`;
+    $("#animatedExportFormat").textContent = `Records locally as ${formatLabel} · ${options.audioEnabled ? "sound on" : "silent"} · current playhead`;
+    $("#exportDialogNote").textContent = !options.canExport
+      ? "Add the required source media before exporting."
+      : motionAvailable
+        ? options.audioEnabled
+          ? "Choose a current-frame image or a moving export with the enabled video sound."
+          : options.soundAvailable
+            ? "Choose a current-frame image or a silent moving export. Turn on the video sound control to include audio."
+            : "Choose a current-frame image or a silent moving export."
+        : "This composition is ready to export as an image.";
+  }
+
+  function openExportDialog() {
+    const dialog = $("#exportDialog");
+    syncExportDialog();
+    if (!dialog.open) dialog.showModal();
+    $("#exportImageChoice").focus();
+  }
+
   function activateTool(tool) {
     const availableTools = new Set(["foreground", "poetic", "contour"]);
     const nextTool = availableTools.has(tool) ? tool : "foreground";
+    const previousTool = document.body.dataset.activeTool;
+    if (previousTool !== nextTool && previousTool === "poetic") window.poeticFragments?.deactivate?.();
     document.body.dataset.activeTool = nextTool;
     window.editorialText?.activate(nextTool);
     $$("[data-tool-view]").forEach((view) => {
@@ -1297,25 +1365,39 @@
     else if (activeTool === "contour") window.contourLoom?.reset();
     else resetComposition();
   });
-  $("#exportButton").addEventListener("click", () => {
-    const activeTool = document.body.dataset.activeTool;
-    if (activeTool === "poetic") window.poeticFragments?.exportPng();
-    else if (activeTool === "contour") window.contourLoom?.exportPng();
-    else exportPng();
+  $("#exportButton").addEventListener("click", openExportDialog);
+  $("#exportDialogClose").addEventListener("click", () => $("#exportDialog").close());
+  $("#exportDialog").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
   });
-  $("#railExportButton").addEventListener("click", exportPng);
+  $("#exportDialogSize").addEventListener("change", (event) => {
+    activeExportController()?.setOutputWidth?.(event.target.value);
+    syncExportDialog();
+  });
+  $("#exportImageChoice").addEventListener("click", () => {
+    const controller = activeExportController();
+    $("#exportDialog").close();
+    controller?.exportPng?.();
+  });
+  $("#animatedClipDuration").addEventListener("input", (event) => {
+    activeExportController()?.setClipDuration?.(event.target.value);
+    syncExportDialog();
+  });
+  $("#animatedExport").addEventListener("click", () => {
+    const controller = activeExportController();
+    $("#exportDialog").close();
+    controller?.exportAnimated?.();
+  });
 
   window.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "e") {
       event.preventDefault();
-      const activeTool = document.body.dataset.activeTool;
-      if (activeTool === "poetic") window.poeticFragments?.exportPng();
-      else if (activeTool === "contour") window.contourLoom?.exportPng();
-      else exportPng();
+      openExportDialog();
     }
   });
 
   window.fieldStudyShell = { activateTool, showToast };
+  window.foregroundStudy = foregroundExportController;
 
   window.editorialText.register("foreground", {
     canvas,

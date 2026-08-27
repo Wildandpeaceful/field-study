@@ -41,6 +41,8 @@ def compile_extractor() -> None:
         "-framework",
         "CoreImage",
         "-framework",
+        "CoreML",
+        "-framework",
         "AppKit",
         "-o",
         str(EXTRACTOR),

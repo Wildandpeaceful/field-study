@@ -14,6 +14,13 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The first launch compiles a
 
 ## What works
 
+### Shared media and export flow
+
+- A single Export action opens a compact format dialog for the active composition
+- PNG is always offered when the composition is ready; animated export appears when Poetic Fragments or Contour Loom has a GIF or video source
+- Output size and motion duration are shown only inside the export dialog
+- Media-capable inputs accept images, GIFs, and videos through one chooser and detect the uploaded format automatically
+
 ### Shared Editorial Text controls
 
 - Click any available text group directly on the artwork to select and highlight it
@@ -38,35 +45,47 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The first launch compiles a
 
 ### Poetic Fragments
 
+- One source chooser accepts still images, animated GIFs, MP4, WebM, and MOV files and detects the format automatically
+- GIF and video sources loop through the lower field and every inline caption fragment, with play/pause and 0.25×–2× speed controls
+- Videos start muted and include an optional sound toggle
 - Editable, locally suggested poetic captions
 - Three to ten crop windows woven directly into the caption
 - Locked/manual or randomized crop placement
 - Adjustable crop size, text scale, typeface, fragment marks, colors, and photo framing
 - The caption and its inline image crops move, scale, and rotate as one stable editorial group
-- Drag crop windows in the lower photograph to change the fragments shown above
+- Drag crop windows in the lower source to change the fragments shown above
 - Independent state when switching between tools
-- 900 × 1200 and 1350 × 1800 PNG export
+- 900 × 1200 and 1350 × 1800 PNG export captures the current frame; browser-native animated export records 3–60 seconds at the selected playback speed
 
 ### Contour Loom
 
-- Separate texture/lower-photo and contour/shape uploads
+- Texture/lower-frame and contour/shape sources each accept a still image, animated GIF, or locally playing video; contour shapes can also come from Lucide icons
+- Transparent GIF/video frames are read from their alpha channel while opaque footage uses the existing contrast/luminance extraction, producing a live moving pixel mask
+- GIFs loop automatically; videos retain independent play/pause, looped playhead scrubbing, replace, clear, current-time, and sound on/off controls
+- Videos start muted; enabling sound on one video automatically mutes the other video source to prevent competing audio, and the enabled source is included in animated export when the browser can capture its audio track
 - Built-in Lucide source picker with local search across 2,035 icon shapes; a chosen SVG feeds directly into the existing contour matrix
-- Drag/drop, file-picker, and clipboard-paste source input with per-image remove/reset actions
+- Drag/drop, file-picker, and clipboard-paste source input with remove/reset actions
 - Adjustable pixel-grid detail, contour sensitivity, edge cleanup, cell spacing, and invert mode
 - Hollow-outline or filled-motif rendering
+- Independent upper motif treatments: woven texture pixels, a selectable solid color, or the original uploaded logo/icon artwork
+- Optional lower contour echo can be hidden without changing the upper motif
 - Square, round, and diamond pixel cells with continuous, mosaic, or tonal texture mapping
 - Original, horizontal, vertical, four-way, and kaleidoscope symmetry
-- Texture-filled ornament above and matching color mask over the lower photograph
-- Draggable motif and photo layers with independent scale controls
-- Dotted-field styling, two explicit layout systems, and two independently transformable editorial labels
-- Local dual-image label suggestions based on texture color, contour density, and symmetry
-- 900 × 1200 and 1350 × 1800 PNG export
+- Texture-filled ornament above and matching color mask over the lower image, GIF, or moving video frame
+- Independently draggable and scalable upper motif, lower contour echo, and lower media layers
+- Optional placement linking keeps the upper motif and lower echo synchronized until an artist needs separate positioning
+- Independently selectable upper-field, solid-motif, lower-echo, and text colors, plus dotted-field styling, two explicit layout systems, two transformable upper labels, and an optional editable photo-word rail over the lower image or video
+- Local source-pair label suggestions based on texture color, contour density, and symmetry
+- 900 × 1200 and 1350 × 1800 still PNG export captures the current animation frame
+- Browser-native animated export records the full composition for 3–60 seconds (10 seconds by default), starting at the current texture and contour playheads and looping each moving source when needed
+
+Animated export remains entirely in the browser. Field/Study prefers MP4 when the browser's `MediaRecorder` supports it and falls back to WebM; enabled video sound is included when the browser can capture its audio track, while GIF exports are silent. Exact format support depends on the browser and operating system.
 
 Requires macOS 14 or later and Xcode Command Line Tools (or Xcode).
 
 ## Local icon assets
 
-The app vendors Lucide's complete static SVG set under `public/vendor/lucide/icons/` for a future searchable icon picker. `public/vendor/lucide/manifest.json` provides display labels, search tags, asset paths, version, and license metadata without requiring a network request or runtime package.
+The app vendors Lucide's complete static SVG set under `public/vendor/lucide/icons/` for Contour Loom's searchable icon picker. `public/vendor/lucide/manifest.json` provides display labels, search tags, asset paths, version, and license metadata without requiring a network request or runtime package.
 
 To rebuild the manifest after updating the vendored package, run:
 
@@ -75,3 +94,5 @@ node scripts/build-lucide-manifest.mjs
 ```
 
 See `THIRD_PARTY_NOTICES.md` and `public/vendor/lucide/LICENSE` for acknowledgments and license terms.
+
+Contour Loom decodes animated GIF sources locally with the vendored, MIT-licensed [omggif](https://github.com/deanm/omggif) library. See `public/vendor/omggif/LICENSE` for its license terms.

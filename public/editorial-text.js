@@ -58,10 +58,14 @@
       button.classList.toggle("selected", isSelected);
       button.setAttribute("aria-pressed", String(isSelected));
     });
-    if (!layer) return;
+    const label = instance.panel.querySelector("[data-editorial-selected-label]");
+    if (!layer) {
+      if (label) label.textContent = instance.emptyLabel || "Choose a text layer";
+      instance.panel.classList.remove("is-locked");
+      return;
+    }
 
     const transform = layer.transform;
-    const label = instance.panel.querySelector("[data-editorial-selected-label]");
     if (label) label.textContent = layer.label;
     const scale = instance.panel.querySelector("[data-editorial-scale]");
     const scaleOutput = instance.panel.querySelector("[data-editorial-scale-output]");
@@ -103,6 +107,9 @@
   }
 
   function beginInteraction(instance, layer, type, event) {
+    const zone = event.currentTarget.closest(".editorial-hit-zone") || event.currentTarget;
+    zone._editorialWasSelected = selection?.tool === instance.tool && selection.id === layer.id;
+    zone._editorialDragged = false;
     select(instance.tool, layer.id, true);
     if (layer.transform.locked) return;
     event.preventDefault();
@@ -120,6 +127,7 @@
       start: { ...layer.transform },
       distance: Math.max(8, Math.hypot(point.x - center.x, point.y - center.y)),
       angle: Math.atan2(point.y - center.y, point.x - center.x),
+      zone,
     };
     window.alignmentGuides?.hide(instance.tool);
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -131,6 +139,9 @@
     const layer = instance && layerFor(instance, interaction.id);
     if (!instance || !layer) return;
     const point = canvasPoint(instance, event);
+    if (Math.hypot(point.x - interaction.point.x, point.y - interaction.point.y) > 2) {
+      interaction.zone._editorialDragged = true;
+    }
     if (interaction.type === "move") {
       let nextX = interaction.start.x + point.x - interaction.point.x;
       let nextY = interaction.start.y + point.y - interaction.point.y;
@@ -207,7 +218,13 @@
     zone.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      select(instance.tool, zone.dataset.editorialHit, true);
+      if (zone._editorialDragged) {
+        zone._editorialDragged = false;
+        return;
+      }
+      if (zone._editorialWasSelected) deselect();
+      else select(instance.tool, zone.dataset.editorialHit, true);
+      zone._editorialWasSelected = false;
     });
     instance.overlay.appendChild(zone);
     instance.zones.set(layer.id, zone);
@@ -245,7 +262,11 @@
   function wirePanel(instance) {
     if (!instance.panel) return;
     instance.panel.querySelectorAll("[data-editorial-layer]").forEach((button) => {
-      button.addEventListener("click", () => select(instance.tool, button.dataset.editorialLayer, false));
+      button.addEventListener("click", () => {
+        const alreadySelected = selection?.tool === instance.tool && selection.id === button.dataset.editorialLayer;
+        if (alreadySelected) deselect();
+        else select(instance.tool, button.dataset.editorialLayer, false);
+      });
     });
     instance.panel.querySelectorAll("[data-editorial-nudge]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -296,6 +317,7 @@
       panel: typeof config.panel === "string" ? document.querySelector(config.panel) : config.panel,
       zones: new Map(),
     };
+    instance.emptyLabel = instance.panel?.querySelector("[data-editorial-selected-label]")?.textContent || "Choose a text layer";
     registry.set(tool, instance);
     wirePanel(instance);
     refresh(tool);
@@ -322,11 +344,11 @@
 
   window.addEventListener("keydown", (event) => {
     if (!selection || selection.tool !== activeTool) return;
-    if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
     if (event.key === "Escape") {
       deselect();
       return;
     }
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
     const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (!directions[event.key]) return;
     const current = selectedLayer();
@@ -338,6 +360,15 @@
       y: current.layer.transform.y + directions[event.key][1] * step,
     });
   });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!selection || selection.tool !== activeTool) return;
+    const current = selectedLayer();
+    if (!current) return;
+    if (event.target.closest(".editorial-hit-zone")) return;
+    if (current.instance.panel?.contains(event.target)) return;
+    deselect();
+  }, true);
 
   window.editorialText = { register, refresh, activate, select, deselect, transformContext };
 })();

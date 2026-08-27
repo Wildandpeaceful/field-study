@@ -11,12 +11,33 @@
   const HEIGHT = 1200;
   const SPLIT_Y = 520;
   const PHOTO_HEIGHT = HEIGHT - SPLIT_Y;
+  const MAX_VIDEO_BYTES = 250 * 1024 * 1024;
+  const MAX_GIF_BYTES = 50 * 1024 * 1024;
+  const MAX_GIF_PIXELS = 16_000_000;
+  const MAX_GIF_FRAMES = 2_000;
+  const MAX_CLIP_DURATION = 60;
+  let motionFrameHandle = null;
+  let videoFrameHandle = null;
+  let videoFrameDriver = null;
+  const photoLayer = document.createElement("canvas");
+  photoLayer.width = WIDTH;
+  photoLayer.height = PHOTO_HEIGHT;
+  const photoContext = photoLayer.getContext("2d");
   const defaultCaptionTransform = () => ({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, locked: false });
 
   const state = {
     image: null,
     sourceUrl: null,
     file: null,
+    sourceKind: "image",
+    gif: null,
+    gifPlaying: false,
+    playbackRate: 1,
+    sound: false,
+    clipDuration: 10,
+    recording: false,
+    recordingProgress: 0,
+    resumeVideoOnActivate: false,
     fileBase: "poetic-fragments",
     caption: "Small windows of color gather inside the quiet architecture of an afternoon.",
     fragmentCount: 7,
@@ -48,9 +69,157 @@
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error("The photograph could not be decoded."));
+      image.onerror = () => reject(new Error("The image could not be decoded."));
       image.src = url;
     });
+  }
+
+  function sourceVideo() {
+    return state.sourceKind === "video" && state.image instanceof HTMLVideoElement
+      ? state.image
+      : null;
+  }
+
+  function isGifFile(file) {
+    return Boolean(file && (file.type === "image/gif" || /\.gif$/i.test(file.name || "")));
+  }
+
+  function hasMotionSource() {
+    return Boolean(sourceVideo() || state.gif?.frameCount > 1);
+  }
+
+  function sourceDimensions() {
+    const video = sourceVideo();
+    return video
+      ? { width: video.videoWidth, height: video.videoHeight }
+      : { width: state.image?.width || 0, height: state.image?.height || 0 };
+  }
+
+  function formatFileMeta(file, duration = 0) {
+    const size = file.size > 1024 * 1024
+      ? (file.size / 1024 / 1024).toFixed(1) + " MB"
+      : Math.max(1, Math.round(file.size / 1024)) + " KB";
+    const type = isGifFile(file) ? "GIF" : (file.type.split("/")[1] || "MEDIA").toUpperCase();
+    return `${size} · ${type}${duration ? ` · ${formatTime(duration)}` : ""}`;
+  }
+
+  function formatTime(value) {
+    const seconds = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+    return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+
+  function clearPixelRect(pixels, canvasWidth, x, y, width, height) {
+    const left = clamp(Math.floor(x), 0, canvasWidth);
+    const right = clamp(Math.ceil(x + width), 0, canvasWidth);
+    const top = Math.max(0, Math.floor(y));
+    const bottom = Math.max(top, Math.ceil(y + height));
+    for (let row = top; row < bottom; row += 1) {
+      pixels.fill(0, (row * canvasWidth + left) * 4, (row * canvasWidth + right) * 4);
+    }
+  }
+
+  async function createGifPlayer(file) {
+    const GifDecoder = typeof GifReader === "function" ? GifReader : window.GifReader;
+    if (typeof GifDecoder !== "function") throw new Error("The local GIF decoder is unavailable. Reload the app and try again.");
+    const reader = new GifDecoder(new Uint8Array(await file.arrayBuffer()));
+    const width = reader.width;
+    const height = reader.height;
+    const frameCount = reader.numFrames();
+    if (!width || !height || !frameCount) throw new Error("The GIF does not contain a usable image frame.");
+    if (width * height > MAX_GIF_PIXELS) throw new Error("That GIF is too large to animate locally. Keep it below 16 megapixels.");
+    if (frameCount > MAX_GIF_FRAMES) throw new Error("That GIF contains too many frames. Keep it below 2,000 frames.");
+
+    const frameCanvas = document.createElement("canvas");
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const frameContext = frameCanvas.getContext("2d", { alpha: true });
+    const pixels = new Uint8ClampedArray(width * height * 4);
+    const imageData = new ImageData(pixels, width, height);
+    const frameDelays = Array.from({ length: frameCount }, (_, index) => clamp(reader.frameInfo(index).delay * 10 || 100, 20, 10_000));
+    const duration = frameDelays.reduce((sum, delay) => sum + delay, 0) / 1000;
+    let currentFrame = -1;
+    let nextFrameAt = 0;
+    let restorePixels = null;
+
+    function paintFrame(index, now, rate) {
+      const wrapped = index === 0 && currentFrame >= 0;
+      if (wrapped) {
+        pixels.fill(0);
+        restorePixels = null;
+      } else if (currentFrame >= 0) {
+        const previous = reader.frameInfo(currentFrame);
+        if (previous.disposal === 2) clearPixelRect(pixels, width, previous.x, previous.y, previous.width, previous.height);
+        else if (previous.disposal === 3 && restorePixels) pixels.set(restorePixels);
+        restorePixels = null;
+      }
+      const frame = reader.frameInfo(index);
+      if (frame.disposal === 3) restorePixels = pixels.slice();
+      reader.decodeAndBlitFrameRGBA(index, pixels);
+      frameContext.putImageData(imageData, 0, 0);
+      currentFrame = index;
+      nextFrameAt = now + frameDelays[index] / Math.max(0.25, rate);
+    }
+
+    const player = {
+      canvas: frameCanvas,
+      width,
+      height,
+      frameCount,
+      duration,
+      resetClock(now = performance.now(), rate = 1) {
+        nextFrameAt = now + frameDelays[Math.max(0, currentFrame)] / Math.max(0.25, rate);
+      },
+      advance(now = performance.now(), rate = 1) {
+        if (currentFrame < 0) {
+          paintFrame(0, now, rate);
+          return true;
+        }
+        if (frameCount < 2 || now < nextFrameAt) return false;
+        let changed = false;
+        let steps = 0;
+        while (now >= nextFrameAt && steps < 12) {
+          paintFrame((currentFrame + 1) % frameCount, nextFrameAt, rate);
+          changed = true;
+          steps += 1;
+        }
+        if (steps === 12 && now >= nextFrameAt) player.resetClock(now, rate);
+        return changed;
+      },
+    };
+    player.advance(performance.now(), state.playbackRate);
+    return player;
+  }
+
+  function loadVideo(video, url) {
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        video.removeEventListener("loadeddata", onReady);
+        video.removeEventListener("error", onError);
+      };
+      const onReady = () => { cleanup(); resolve(video); };
+      const onError = () => { cleanup(); reject(new Error("The video could not be decoded in this browser.")); };
+      video.addEventListener("loadeddata", onReady, { once: true });
+      video.addEventListener("error", onError, { once: true });
+      video.src = url;
+      video.load();
+    });
+  }
+
+  function preferredRecordingFormat() {
+    if (!window.MediaRecorder) return null;
+    const candidates = [
+      { mimeType: "video/mp4;codecs=avc1.42E01E", extension: "mp4", label: "MP4" },
+      { mimeType: "video/mp4", extension: "mp4", label: "MP4" },
+      { mimeType: "video/webm;codecs=vp9", extension: "webm", label: "WebM" },
+      { mimeType: "video/webm;codecs=vp8", extension: "webm", label: "WebM" },
+      { mimeType: "video/webm", extension: "webm", label: "WebM" },
+    ];
+    return candidates.find((candidate) => !MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(candidate.mimeType)) || null;
+  }
+
+  function videoCaptureStream(video) {
+    const capture = video?.captureStream || video?.mozCaptureStream;
+    return typeof capture === "function" ? capture.call(video) : null;
   }
 
   function safeFileBase(name) {
@@ -66,40 +235,182 @@
     $("#poeticProcessStatusText").textContent = message;
   }
 
+  function stopMotionRender() {
+    if (motionFrameHandle !== null) cancelAnimationFrame(motionFrameHandle);
+    if (videoFrameHandle !== null && videoFrameDriver?.cancelVideoFrameCallback) {
+      videoFrameDriver.cancelVideoFrameCallback(videoFrameHandle);
+    }
+    motionFrameHandle = null;
+    videoFrameHandle = null;
+    videoFrameDriver = null;
+  }
+
+  function motionIsPlaying() {
+    const video = sourceVideo();
+    return video ? !video.paused && !video.ended : Boolean(state.gif && state.gifPlaying);
+  }
+
+  function shouldRenderMotion() {
+    return hasMotionSource()
+      && (state.recording || (document.body.dataset.activeTool === "poetic" && !document.hidden))
+      && (state.recording || motionIsPlaying());
+  }
+
+  function scheduleMotionRender() {
+    if (!shouldRenderMotion() || motionFrameHandle !== null || videoFrameHandle !== null) return;
+    const video = sourceVideo();
+    if (video && !video.paused && video.requestVideoFrameCallback) {
+      videoFrameDriver = video;
+      videoFrameHandle = video.requestVideoFrameCallback(() => {
+        videoFrameHandle = null;
+        videoFrameDriver = null;
+        render({ refreshOverlays: false });
+        syncControls();
+        scheduleMotionRender();
+      });
+      return;
+    }
+    motionFrameHandle = requestAnimationFrame((now) => {
+      motionFrameHandle = null;
+      const changed = state.gif && state.gifPlaying
+        ? state.gif.advance(now, state.playbackRate)
+        : Boolean(video && !video.paused);
+      if (changed || state.recording) render({ refreshOverlays: false });
+      syncControls();
+      scheduleMotionRender();
+    });
+  }
+
+  function disposeSourceVideo() {
+    const video = $("#poeticSourceVideoThumb");
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    video.hidden = true;
+  }
+
+  async function playMotion(showMessage = true) {
+    const video = sourceVideo();
+    if (video) {
+      try {
+        video.muted = !state.sound;
+        video.playbackRate = state.playbackRate;
+        await video.play();
+      } catch {
+        if (showMessage) showToast("Press Play to start the source video.");
+        syncControls();
+        return false;
+      }
+    } else if (state.gif) {
+      state.gifPlaying = true;
+      state.gif.resetClock(performance.now(), state.playbackRate);
+    } else {
+      return false;
+    }
+    scheduleMotionRender();
+    syncControls();
+    if (showMessage) showToast(`${state.sourceKind === "gif" ? "GIF" : "Video"} playing at ${formatRate(state.playbackRate)}.`);
+    return true;
+  }
+
+  function pauseMotion(showMessage = true) {
+    const video = sourceVideo();
+    if (video) video.pause();
+    if (state.gif) state.gifPlaying = false;
+    stopMotionRender();
+    render();
+    syncControls();
+    if (showMessage) showToast(`${state.sourceKind === "gif" ? "GIF" : "Video"} paused on the current frame.`);
+  }
+
+  function formatRate(rate) {
+    return `${Number(rate).toFixed(Number(rate) % 1 ? 2 : 0).replace(/0$/, "")}×`;
+  }
+
   async function handleFile(file) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      showToast("Choose a JPG, PNG, or WebP photograph.");
+    const gif = isGifFile(file);
+    const videoFile = file.type.startsWith("video/");
+    const imageFile = file.type.startsWith("image/");
+    if (!imageFile && !videoFile && !gif) {
+      showToast("Choose a JPG, PNG, WebP, GIF, MP4, WebM, or MOV source.");
       return;
     }
-    if (file.size > 30 * 1024 * 1024) {
-      showToast("That photograph is larger than 30 MB.");
+    const limit = gif ? MAX_GIF_BYTES : videoFile ? MAX_VIDEO_BYTES : 30 * 1024 * 1024;
+    if (file.size > limit) {
+      showToast(gif
+        ? "That GIF is larger than the 50 MB local limit."
+        : videoFile
+          ? "That video is larger than the 250 MB local limit."
+          : "That image is larger than the 30 MB local limit.");
       return;
     }
-    if (state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
-    state.sourceUrl = URL.createObjectURL(file);
+    if (state.recording) {
+      showToast("Finish the animated export before replacing its source.");
+      return;
+    }
+    const nextUrl = URL.createObjectURL(file);
+    stopMotionRender();
     try {
-      state.image = await loadImage(state.sourceUrl);
+      let media;
+      let gifPlayer = null;
+      let duration = 0;
+      if (gif) {
+        gifPlayer = await createGifPlayer(file);
+        media = gifPlayer.canvas;
+        duration = gifPlayer.duration;
+      } else if (videoFile) {
+        media = await loadVideo($("#poeticSourceVideoThumb"), nextUrl);
+        duration = Number.isFinite(media.duration) ? media.duration : 0;
+      } else {
+        media = await loadImage(nextUrl);
+      }
+
+      if (state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
+      if (state.sourceKind === "video" && media !== $("#poeticSourceVideoThumb")) disposeSourceVideo();
+      state.sourceUrl = nextUrl;
+      state.image = media;
       state.file = file;
       state.fileBase = safeFileBase(file.name);
+      state.sourceKind = gif ? "gif" : videoFile ? "video" : "image";
+      state.gif = gifPlayer;
+      state.gifPlaying = Boolean(gifPlayer?.frameCount > 1);
+      state.playbackRate = 1;
+      state.sound = false;
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
       state.activeFragment = -1;
-      $("#poeticSourceThumb").src = state.sourceUrl;
+
+      const imageThumb = $("#poeticSourceThumb");
+      const videoThumb = $("#poeticSourceVideoThumb");
+      imageThumb.hidden = videoFile;
+      videoThumb.hidden = !videoFile;
+      if (!videoFile) imageThumb.src = nextUrl;
+      if (videoFile) {
+        videoThumb.loop = true;
+        videoThumb.muted = true;
+        videoThumb.playbackRate = 1;
+      }
       $("#poeticSourceName").textContent = file.name;
-      $("#poeticSourceMeta").textContent = Math.round(file.size / 1024) + " KB · " + file.type.split("/")[1].toUpperCase();
+      $("#poeticSourceMeta").textContent = formatFileMeta(file, duration);
       $("#poeticDropIdle").hidden = true;
       $("#poeticSourcePreview").hidden = false;
       $("#poeticEmptyOverlay").hidden = true;
       if (document.body.dataset.activeTool === "poetic") {
         $("#fileNameHeader").textContent = state.fileBase.replace(/-/g, " ").toUpperCase();
       }
-      setStatus("success", "Crop windows ready · drag them directly on the artwork");
+      setStatus("success", hasMotionSource()
+        ? `Moving crop windows ready · ${state.sourceKind.toUpperCase()} · ${formatRate(state.playbackRate)}`
+        : "Crop windows ready · drag them directly on the artwork");
       suggestCaption(false);
       generateFragments();
       syncControls();
       render();
+      if (hasMotionSource()) await playMotion(false);
     } catch (error) {
+      URL.revokeObjectURL(nextUrl);
       state.image = null;
+      state.gif = null;
+      state.gifPlaying = false;
       setStatus("error", error.message);
       showToast(error.message);
     }
@@ -164,7 +475,8 @@
     sample.width = 48;
     sample.height = 48;
     const sampleContext = sample.getContext("2d", { willReadFrequently: true });
-    const cover = coverGeometry(state.image.width, state.image.height, 48, 48, 0.5, 0.5, 1);
+    const dimensions = sourceDimensions();
+    const cover = coverGeometry(dimensions.width, dimensions.height, 48, 48, 0.5, 0.5, 1);
     sampleContext.drawImage(state.image, cover.x, cover.y, cover.width, cover.height);
     const pixels = sampleContext.getImageData(0, 0, 48, 48).data;
     let red = 0;
@@ -235,13 +547,10 @@
   }
 
   function buildPhotoLayer() {
-    const photoLayer = document.createElement("canvas");
-    photoLayer.width = WIDTH;
-    photoLayer.height = PHOTO_HEIGHT;
-    const photoContext = photoLayer.getContext("2d");
+    const dimensions = sourceDimensions();
     const geometry = coverGeometry(
-      state.image.width,
-      state.image.height,
+      dimensions.width,
+      dimensions.height,
       WIDTH,
       PHOTO_HEIGHT,
       state.photo.x,
@@ -250,6 +559,7 @@
     );
     photoContext.imageSmoothingEnabled = true;
     photoContext.imageSmoothingQuality = "high";
+    photoContext.clearRect(0, 0, WIDTH, PHOTO_HEIGHT);
     photoContext.drawImage(state.image, geometry.x, geometry.y, geometry.width, geometry.height);
     return photoLayer;
   }
@@ -391,7 +701,7 @@
     });
   }
 
-  function render() {
+  function render(options = {}) {
     const scale = state.outputWidth / WIDTH;
     const outputHeight = Math.round(state.outputWidth * 4 / 3);
     if (canvas.width !== state.outputWidth || canvas.height !== outputHeight) {
@@ -418,7 +728,7 @@
     ctx.fillRect(0, SPLIT_Y - 1, WIDTH, 2);
     ctx.globalAlpha = 1;
     ctx.restore();
-    window.editorialText?.refresh("poetic");
+    if (options.refreshOverlays !== false) window.editorialText?.refresh("poetic");
   }
 
   function syncControls() {
@@ -436,9 +746,39 @@
     $("#poeticTextValue").textContent = state.textColor.toUpperCase();
     $("#poeticPhotoScale").value = Math.round(state.photo.scale * 100);
     $("#poeticPhotoScaleOutput").textContent = Math.round(state.photo.scale * 100) + "%";
-    $("#poeticExportSize").value = state.outputWidth;
     $("#poeticCanvasDimensions").textContent = state.outputWidth + " × " + Math.round(state.outputWidth * 4 / 3) + " PX";
     $("#poeticFragmentStatus").textContent = state.fragmentCount + (state.fragmentCount === 1 ? " FRAGMENT" : " FRAGMENTS");
+    const moving = hasMotionSource();
+    const playing = moving && motionIsPlaying();
+    const motionControls = $("#poeticMotionControls");
+    motionControls.hidden = !moving;
+    motionControls.classList.toggle("gif-source", state.sourceKind === "gif");
+    const playButton = $("#poeticPlayToggle");
+    playButton.disabled = !moving || state.recording;
+    playButton.classList.toggle("playing", playing);
+    playButton.setAttribute("aria-pressed", String(playing));
+    $("span", playButton).textContent = playing ? "Pause" : "Play";
+    $("#poeticPlaybackSpeed").value = Math.round(state.playbackRate * 100);
+    $("#poeticPlaybackSpeed").disabled = !moving || state.recording;
+    $("#poeticPlaybackSpeedOutput").textContent = formatRate(state.playbackRate);
+    const soundButton = $("#poeticSoundToggle");
+    const video = sourceVideo();
+    soundButton.hidden = !video;
+    soundButton.disabled = !video || state.recording;
+    soundButton.setAttribute("aria-pressed", String(Boolean(video && state.sound)));
+    soundButton.setAttribute("aria-label", `Turn source video sound ${state.sound ? "off" : "on"}`);
+    soundButton.title = state.sound ? "Sound on" : "Sound off";
+    if (video) {
+      video.playbackRate = state.playbackRate;
+      video.muted = !state.sound;
+    }
+    $("#poeticMotionStatus").textContent = state.sourceKind === "gif"
+      ? `GIF · LOOP · ${formatRate(state.playbackRate)}`
+      : `VIDEO · LOOP · ${formatRate(state.playbackRate)} · SOUND ${state.sound ? "ON" : "OFF"}`;
+    if (moving && state.image && !state.recording) {
+      setStatus("success", `Moving crop windows ready · ${state.sourceKind.toUpperCase()} · ${formatRate(state.playbackRate)}`);
+    }
+    state.clipDuration = clamp(Number(state.clipDuration) || 10, 3, MAX_CLIP_DURATION);
     $$("[data-fragment-placement]").forEach((button) => {
       const selected = button.dataset.fragmentPlacement === state.placement;
       button.classList.toggle("selected", selected);
@@ -459,6 +799,13 @@
     state.captionTransform = defaultCaptionTransform();
     state.photo = { x: 0.5, y: 0.5, scale: 1 };
     state.activeFragment = -1;
+    state.playbackRate = 1;
+    state.sound = false;
+    if (sourceVideo()) {
+      sourceVideo().playbackRate = 1;
+      sourceVideo().muted = true;
+    }
+    state.gif?.resetClock(performance.now(), 1);
     $("#poeticCaptionInput").value = state.caption;
     if (state.image) generateFragments();
     syncControls();
@@ -468,7 +815,7 @@
 
   function exportPng() {
     if (!state.image) {
-      showToast("Add a photograph before exporting.");
+      showToast("Add source media before exporting.");
       return;
     }
     render();
@@ -491,6 +838,103 @@
     form.submit();
     requestAnimationFrame(() => form.remove());
     showToast("Poetic Fragments PNG exported.");
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2_000);
+  }
+
+  async function exportAnimated() {
+    if (state.recording) return;
+    if (!state.image || !hasMotionSource()) {
+      showToast("Add a GIF or video source before exporting motion.");
+      return;
+    }
+    const format = preferredRecordingFormat();
+    if (!format || !canvas.captureStream || !window.MediaRecorder) {
+      showToast("Animated export is unavailable in this browser. PNG export remains available.");
+      return;
+    }
+
+    const duration = clamp(Math.round(Number(state.clipDuration) || 10), 3, MAX_CLIP_DURATION);
+    const video = sourceVideo();
+    const videoSnapshot = video ? { startTime: video.currentTime, wasPaused: video.paused } : null;
+    const gifWasPlaying = state.gifPlaying;
+    let stream = null;
+    let sourceAudioStream = null;
+    let includedAudio = false;
+    let recorder = null;
+    let stopTimer = null;
+
+    try {
+      state.recording = true;
+      state.recordingProgress = 0;
+      if (video) await video.play();
+      if (state.gif) {
+        state.gifPlaying = true;
+        state.gif.resetClock(performance.now(), state.playbackRate);
+      }
+      scheduleMotionRender();
+      render({ refreshOverlays: false });
+      syncControls();
+      showToast(`Recording ${duration}s locally at ${formatRate(state.playbackRate)} · keep this tab open.`);
+
+      stream = canvas.captureStream(30);
+      if (video && state.sound) {
+        sourceAudioStream = videoCaptureStream(video);
+        const audioTrack = sourceAudioStream?.getAudioTracks?.()[0];
+        if (audioTrack) {
+          stream.addTrack(audioTrack);
+          includedAudio = true;
+        }
+      }
+      recorder = new MediaRecorder(stream, { mimeType: format.mimeType, videoBitsPerSecond: 6_000_000 });
+      const chunks = [];
+      const completed = new Promise((resolve, reject) => {
+        recorder.addEventListener("dataavailable", (event) => {
+          if (event.data?.size) chunks.push(event.data);
+        });
+        recorder.addEventListener("stop", () => resolve(new Blob(chunks, { type: format.mimeType })), { once: true });
+        recorder.addEventListener("error", () => reject(recorder.error || new Error("Animated recording failed.")), { once: true });
+      });
+      recorder.start(250);
+      stopTimer = window.setTimeout(() => {
+        if (recorder?.state === "recording") recorder.stop();
+      }, duration * 1000);
+
+      const blob = await completed;
+      if (!blob.size) throw new Error("The browser returned an empty animated export.");
+      downloadBlob(blob, `${state.fileBase}-poetic-fragments-${duration}s.${format.extension}`);
+      showToast(`${duration}s Poetic Fragments ${format.label} exported${includedAudio ? " with sound" : ""}.`);
+    } catch (error) {
+      if (recorder?.state === "recording") recorder.stop();
+      showToast(error?.message || "Animated export could not be created.");
+    } finally {
+      if (stopTimer) window.clearTimeout(stopTimer);
+      stream?.getTracks().forEach((track) => track.stop());
+      sourceAudioStream?.getTracks().forEach((track) => {
+        if (!stream?.getTracks().includes(track)) track.stop();
+      });
+      state.recording = false;
+      state.recordingProgress = 0;
+      if (videoSnapshot) {
+        if (videoSnapshot.wasPaused) video.pause();
+        video.currentTime = Math.min(videoSnapshot.startTime, Number.isFinite(video.duration) ? video.duration : videoSnapshot.startTime);
+      }
+      state.gifPlaying = gifWasPlaying;
+      stopMotionRender();
+      render();
+      syncControls();
+      scheduleMotionRender();
+    }
   }
 
   function canvasPoint(event) {
@@ -578,6 +1022,34 @@
   }));
   dropZone.addEventListener("drop", (event) => handleFile(event.dataTransfer?.files?.[0]));
 
+  $("#poeticPlayToggle").addEventListener("click", () => {
+    if (motionIsPlaying()) pauseMotion(true);
+    else playMotion(true);
+  });
+  $("#poeticPlaybackSpeed").addEventListener("input", (event) => {
+    state.playbackRate = clamp(Number(event.target.value) / 100, 0.25, 2);
+    if (sourceVideo()) sourceVideo().playbackRate = state.playbackRate;
+    state.gif?.resetClock(performance.now(), state.playbackRate);
+    syncControls();
+    scheduleMotionRender();
+  });
+  $("#poeticSoundToggle").addEventListener("click", () => {
+    const video = sourceVideo();
+    if (!video || state.recording) return;
+    state.sound = !state.sound;
+    video.muted = !state.sound;
+    syncControls();
+    showToast(`Poetic Fragments video sound ${state.sound ? "on" : "off"}.`);
+  });
+  const poeticVideoPreview = $("#poeticSourceVideoThumb");
+  poeticVideoPreview.addEventListener("play", () => { syncControls(); scheduleMotionRender(); });
+  poeticVideoPreview.addEventListener("pause", () => { stopMotionRender(); render(); syncControls(); });
+  poeticVideoPreview.addEventListener("ended", () => syncControls());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopMotionRender();
+    else scheduleMotionRender();
+  });
+
   $("#poeticSuggestCaption").addEventListener("click", () => {
     state.seed += 1;
     suggestCaption(true);
@@ -610,7 +1082,7 @@
   });
   $("#rerollFragments").addEventListener("click", () => {
     if (!state.image) {
-      showToast("Add a photograph before shuffling crop windows.");
+      showToast("Add source media before shuffling crop windows.");
       return;
     }
     generateFragments();
@@ -645,19 +1117,25 @@
     syncControls();
     render();
   });
-  $("#poeticExportSize").addEventListener("change", (event) => {
-    state.outputWidth = Number(event.target.value);
-    syncControls();
-    render();
-  });
-  $("#poeticRailExport").addEventListener("click", exportPng);
-
   function activate() {
     $("#fileNameHeader").textContent = state.image
       ? state.fileBase.replace(/-/g, " ").toUpperCase()
       : "POETIC FRAGMENTS";
     syncControls();
     render();
+    if (state.resumeVideoOnActivate && sourceVideo()) {
+      state.resumeVideoOnActivate = false;
+      playMotion(false);
+    } else {
+      scheduleMotionRender();
+    }
+  }
+
+  function deactivate() {
+    const video = sourceVideo();
+    state.resumeVideoOnActivate = Boolean(video && !video.paused);
+    if (video) video.pause();
+    stopMotionRender();
   }
 
   window.editorialText.register("poetic", {
@@ -687,7 +1165,32 @@
     render,
   });
 
-  window.poeticFragments = { activate, reset, exportPng };
+  window.poeticFragments = {
+    activate,
+    deactivate,
+    reset,
+    exportPng,
+    exportAnimated,
+    getExportOptions: () => ({
+      canExport: Boolean(state.image),
+      motionAvailable: hasMotionSource() && Boolean(state.image && preferredRecordingFormat()),
+      outputWidth: state.outputWidth,
+      clipDuration: state.clipDuration,
+      recording: state.recording,
+      audioEnabled: Boolean(sourceVideo() && state.sound),
+      soundAvailable: Boolean(sourceVideo()),
+      format: preferredRecordingFormat(),
+    }),
+    setClipDuration: (duration) => {
+      state.clipDuration = clamp(Number(duration) || 10, 3, MAX_CLIP_DURATION);
+      syncControls();
+    },
+    setOutputWidth: (width) => {
+      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      syncControls();
+      render();
+    },
+  };
   ensureFragments();
   syncControls();
   render();

@@ -10,3 +10,12 @@ Field/Study includes the complete static SVG collection from `lucide-static` 1.3
 - Vendored license: `public/vendor/lucide/LICENSE`
 
 The copyright and permission notices supplied by Lucide are preserved in the vendored license file and in the individual SVG files.
+
+## omggif
+
+Field/Study includes the dependency-free `omggif` GIF89a decoder so Contour Loom can render animated GIF frames reliably in its canvas and exports.
+
+- Project: [omggif](https://github.com/deanm/omggif)
+- Copyright: Dean McNamee, 2013
+- License: MIT
+- Vendored license: `public/vendor/omggif/LICENSE`
