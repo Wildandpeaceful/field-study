@@ -22,6 +22,7 @@
           <button type="button" data-tool-switch="poetic" aria-pressed="false"><span>02</span> Poetic Fragments</button>
           <button type="button" data-tool-switch="contour" aria-pressed="false"><span>03</span> Contour Loom</button>
           <button type="button" data-tool-switch="index" aria-pressed="false"><span>04</span> Image Index</button>
+          <button type="button" data-tool-switch="motion" data-feature="motion-specimen" aria-pressed="false" hidden><span>05</span> Motion Specimen</button>
         </nav>
         <div class="header-meta" aria-label="Project status">
           <span class="privacy-dot"></span>
@@ -31,6 +32,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="format-action" id="outputFormatButton" type="button" title="Output format · Field portrait">
+          <span>Canvas</span><strong>3:4</strong><i aria-hidden="true"></i>
+        </button>
         <button class="text-button" id="resetButton" type="button">Reset</button>
         <button class="primary-action" id="exportButton" type="button">
           <span>Export</span>
@@ -104,7 +108,7 @@
                 <span class="status-light"></span>
                 <span id="lowerProcessStatusText">Using the subject image until a lower frame is added</span>
               </div>
-              <button class="swap-images-action" id="swapSourceImages" type="button" disabled>
+              <button class="swap-images-action" id="swapSourceImages" type="button" disabled hidden>
                 <span class="swap-icon" aria-hidden="true"><i>↑</i><i>↓</i></span>
                 <span><strong>Swap image roles</strong><small>Lower photo ↔ top subject</small></span>
               </button>
@@ -155,17 +159,19 @@
                 <span class="effect-icon effect-halftone"></span>Halftone
               </button>
             </div>
-            <label class="range-row" for="effectSize">
-              <span>Effect scale</span>
-              <input id="effectSize" type="range" min="6" max="24" value="12" />
-              <output id="effectSizeOutput">12</output>
-            </label>
-            <div class="pixel-controls" id="pixelControls" hidden>
-              <label class="range-row" for="pixelContrast">
-                <span>Optional contrast</span>
-                <input id="pixelContrast" type="range" min="0" max="60" value="0" />
-                <output id="pixelContrastOutput">0</output>
+            <div class="effect-controls" id="effectControls" hidden>
+              <label class="range-row" for="effectSize">
+                <span>Effect scale</span>
+                <input id="effectSize" type="range" min="6" max="24" value="12" />
+                <output id="effectSizeOutput">12</output>
               </label>
+              <div class="pixel-controls" id="pixelControls" hidden>
+                <label class="range-row" for="pixelContrast">
+                  <span>Optional contrast</span>
+                  <input id="pixelContrast" type="range" min="0" max="60" value="0" />
+                  <output id="pixelContrastOutput">0</output>
+                </label>
+              </div>
             </div>
           </div>
         </details>
@@ -202,6 +208,11 @@
             <i class="section-chevron" aria-hidden="true"></i>
           </summary>
           <div class="section-body">
+            <button class="auto-compose-action" id="autoCompose" type="button" disabled>
+              <span aria-hidden="true">✦</span>
+              <span><strong>Auto Compose</strong><small>Fit the selected assets and choose a responsive layout</small></span>
+              <i aria-hidden="true">→</i>
+            </button>
             <div class="layout-options" role="radiogroup" aria-label="Layout system">
               <button type="button" class="layout-option selected" data-layout="orbit" role="radio" aria-checked="true">
                 <span class="layout-diagram diagram-orbit"><i></i></span>
@@ -297,7 +308,7 @@
             <span id="activeLayerLabel">SUBJECT LAYER ACTIVE</span>
           </div>
           <div>
-            <span>3:4</span>
+            <span data-canvas-ratio>3:4</span>
             <span id="canvasDimensions">900 × 1200 PX</span>
           </div>
         </div>
@@ -502,7 +513,7 @@
             <span id="poeticFragmentStatus">7 FRAGMENTS</span>
           </div>
           <div>
-            <span>3:4</span>
+            <span data-canvas-ratio>3:4</span>
             <span id="poeticCanvasDimensions">900 × 1200 PX</span>
           </div>
         </div>
@@ -610,13 +621,20 @@
                 <span><strong>Choose from Lucide</strong><small id="contourIconSourceNote">Search 2,035 local icon shapes</small></span>
                 <em>Browse</em>
               </button>
+              <button class="icon-library-trigger giphy-library-trigger" id="contourOpenGiphyPicker" type="button">
+                <span class="icon-library-trigger-mark giphy-trigger-mark" aria-hidden="true">
+                  <img src="/vendor/lucide/icons/sticker.svg" alt="" />
+                </span>
+                <span><strong>Transparent media</strong><small>Search animated GIPHY Stickers</small></span>
+                <em>Browse</em>
+              </button>
             </div>
             <p class="source-mode-note contour-paste-note">Tip: paste an image with ⌘V / Ctrl+V while this tool is active.</p>
             <div class="process-status" id="contourProcessStatus" aria-live="polite">
               <span class="status-light"></span>
               <span id="contourProcessStatusText">Waiting for texture and contour sources</span>
             </div>
-            <button class="swap-images-action" id="contourSwapImages" type="button" disabled>
+            <button class="swap-images-action" id="contourSwapImages" type="button" disabled hidden>
               <span class="swap-icon" aria-hidden="true"><i>↑</i><i>↓</i></span>
               <span><strong>Swap image roles</strong><small>Texture / photo ↔ contour source</small></span>
             </button>
@@ -856,7 +874,7 @@
             <span id="contourLayerStatus">PIXEL MOTIF ACTIVE</span>
           </div>
           <div>
-            <span>3:4</span>
+            <span data-canvas-ratio>3:4</span>
             <span id="contourCanvasDimensions">900 × 1200 PX</span>
           </div>
         </div>
@@ -1002,7 +1020,7 @@ OBJECT INDEX</textarea></label>
             <span id="imageIndexLayerStatus">SUBJECT INDEX ACTIVE</span>
           </div>
           <div>
-            <span>3:4</span>
+            <span data-canvas-ratio>3:4</span>
             <span id="imageIndexCanvasDimensions">900 × 1200 PX</span>
           </div>
         </div>
@@ -1023,6 +1041,139 @@ OBJECT INDEX</textarea></label>
           </div>
         </div>
         <p class="workspace-help"><span>TIP</span> Drag the subject, then reroll the structure to explore a new crop and label rhythm.</p>
+      </section>
+    </main>
+
+    <!-- OPTIONAL FEATURE: Motion Specimen. Controlled by feature-flags.js. -->
+    <main class="studio motion-specimen-studio" id="motionSpecimenStudio" data-tool-view="motion" data-feature="motion-specimen" hidden>
+      <aside class="control-rail" aria-label="Motion Specimen controls">
+        <div class="rail-intro motion-specimen-intro">
+          <p class="eyebrow">COMPOSITION 05</p>
+          <h1>Motion<br />Specimen</h1>
+          <p>Click a moving subject, trace it through time, then turn its movement into an editorial specimen.</p>
+        </div>
+
+        <details class="control-section" open aria-labelledby="motionSourceHeading">
+          <summary class="section-heading"><span>01</span><h2 id="motionSourceHeading">Source video</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <label class="drop-zone" id="motionDropZone" for="motionSourceInput">
+              <input id="motionSourceInput" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" />
+              <span class="drop-idle" id="motionDropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5" /></svg>
+                <span><strong>Choose a movement clip</strong><small>MP4, MOV, WebM · processed locally</small></span>
+              </span>
+              <span class="source-preview" id="motionSourcePreview" hidden>
+                <video id="motionSourceVideo" muted playsinline loop preload="metadata"></video>
+                <span><strong id="motionSourceName">Motion source</strong><small id="motionSourceMeta">Ready</small></span>
+                <em>Replace</em>
+              </span>
+            </label>
+            <div class="video-playback motion-video-playback" id="motionPlayback" hidden>
+              <button class="video-play-toggle" id="motionPlayToggle" type="button" aria-pressed="false"><i aria-hidden="true"></i><span>Play</span></button>
+              <label for="motionPlayhead"><span class="sr-only">Video playhead</span><input id="motionPlayhead" type="range" min="0" max="1" step="0.01" value="0" /></label>
+              <output id="motionVideoTime">00:00 / 00:00</output>
+              <button class="video-sound-toggle" id="motionSoundToggle" type="button" aria-pressed="false" aria-label="Turn source sound on" title="Sound off"><i aria-hidden="true"></i></button>
+            </div>
+            <div class="motion-playback-meta" id="motionPlaybackMeta" hidden>
+              <label class="range-row" for="motionPlaybackSpeed"><span>Playback speed</span><input id="motionPlaybackSpeed" type="range" min="25" max="200" step="25" value="100" /><output id="motionPlaybackSpeedOutput">1×</output></label>
+              <label class="palette-target-row motion-source-framing" for="motionSourceFraming"><span>Video framing</span><select id="motionSourceFraming"><option value="fit">Fit entire video</option><option value="fill">Fill canvas</option></select></label>
+            </div>
+            <div class="process-status" id="motionProcessStatus" aria-live="polite"><span class="status-light"></span><span id="motionProcessStatusText">Waiting for a video</span></div>
+            <button class="reset-defaults-action motion-select-action" id="motionSelectSubject" type="button" disabled><span>Select an object on canvas</span><small>Click near the center of a person or object</small></button>
+            <button class="source-clear motion-clear-action" id="motionClearSource" type="button" hidden>Clear source</button>
+          </div>
+        </details>
+
+        <details class="control-section" open aria-labelledby="motionTrackingHeading">
+          <summary class="section-heading"><span>02</span><h2 id="motionTrackingHeading">Time sampling</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <label class="range-row" for="motionSampleCount"><span>Tracked moments</span><input id="motionSampleCount" type="range" min="3" max="24" step="1" value="9" /><output id="motionSampleCountOutput">9</output></label>
+            <label class="range-row" for="motionTrackSpan"><span>Sample span</span><input id="motionTrackSpan" type="range" min="1" max="15" step="0.5" value="6" /><output id="motionTrackSpanOutput">6s</output></label>
+            <p class="source-mode-note" id="motionTrackingNote">The current playhead becomes the beginning of the tracked passage.</p>
+            <div class="motion-track-progress" id="motionTrackProgress" hidden><i></i><span id="motionTrackProgressText">Preparing frames</span></div>
+          </div>
+        </details>
+
+        <details class="control-section" open aria-labelledby="motionModeHeading">
+          <summary class="section-heading"><span>03</span><h2 id="motionModeHeading">Specimen mode</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <div class="motion-mode-grid" role="group" aria-label="Motion Specimen composition mode">
+              <button type="button" class="selected" data-motion-mode="echo" aria-pressed="true"><strong>Echo Trail</strong><small>Opacity through time</small></button>
+              <button type="button" data-motion-mode="strobe" aria-pressed="false"><strong>Strobe Stack</strong><small>Chronophoto layers</small></button>
+              <button type="button" data-motion-mode="grid" aria-pressed="false"><strong>Motion Grid</strong><small>Numbered contact sheet</small></button>
+              <button type="button" data-motion-mode="ribbon" aria-pressed="false"><strong>Motion Ribbon</strong><small>Stretched color path</small></button>
+              <button type="button" data-motion-mode="pose" aria-pressed="false"><strong>Pose Type</strong><small>Anchored labels</small></button>
+              <button type="button" data-motion-mode="freeze" aria-pressed="false"><strong>Freeze / Flow</strong><small>Still world, live subject</small></button>
+            </div>
+          </div>
+        </details>
+
+        <details class="control-section" aria-labelledby="motionCompositionHeading">
+          <summary class="section-heading"><span>04</span><h2 id="motionCompositionHeading">Composition</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <div class="segmented-control motion-background-control" role="group" aria-label="Motion Specimen background">
+              <button type="button" class="selected" data-motion-background="frozen" aria-pressed="true">Frozen</button>
+              <button type="button" data-motion-background="solid" aria-pressed="false">Solid</button>
+              <button type="button" data-motion-background="live" aria-pressed="false">Live</button>
+            </div>
+            <label class="range-row" for="motionSubjectScale"><span>Subject scale</span><input id="motionSubjectScale" type="range" min="35" max="360" value="100" /><output id="motionSubjectScaleOutput">100%</output></label>
+            <label class="range-row" for="motionTrailSpread"><span>Motion spread</span><input id="motionTrailSpread" type="range" min="0" max="240" value="100" /><output id="motionTrailSpreadOutput">100%</output></label>
+            <label class="range-row" for="motionOpacityDecay"><span>Echo decay</span><input id="motionOpacityDecay" type="range" min="0" max="100" value="66" /><output id="motionOpacityDecayOutput">66%</output></label>
+            <label class="range-row" for="motionOffsetX"><span>Horizontal</span><input id="motionOffsetX" type="range" min="-100" max="100" value="0" /><output id="motionOffsetXOutput">0%</output></label>
+            <label class="range-row" for="motionOffsetY"><span>Vertical</span><input id="motionOffsetY" type="range" min="-100" max="100" value="0" /><output id="motionOffsetYOutput">0%</output></label>
+            <div class="section-tool-row"><button class="small-action" id="motionResetComposition" type="button">Reset composition</button></div>
+          </div>
+        </details>
+
+        <details class="control-section copy-section" aria-labelledby="motionTypeHeading">
+          <summary class="section-heading"><span>05</span><h2 id="motionTypeHeading">Pose typography</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <div class="segmented-control motion-pose-content" role="group" aria-label="Pose anchor content">
+              <button type="button" class="selected" data-motion-pose-content="labels" aria-pressed="true">Labels</button>
+              <button type="button" data-motion-pose-content="icons" aria-pressed="false">Icons</button>
+              <button type="button" data-motion-pose-content="both" aria-pressed="false">Both</button>
+            </div>
+            <label for="motionLabels">One label per line<textarea id="motionLabels" rows="6" maxlength="300" spellcheck="false">HEAD / DIRECTION
+LEFT / GESTURE
+BODY / CENTER
+RIGHT / REACH
+GROUND / WEIGHT</textarea></label>
+            <label class="range-row" for="motionTypeSize"><span>Label size</span><input id="motionTypeSize" type="range" min="10" max="48" value="18" /><output id="motionTypeSizeOutput">18px</output></label>
+          </div>
+        </details>
+
+        <details class="control-section universal-palette-section" aria-labelledby="motionPaletteHeading">
+          <summary class="section-heading"><span>06</span><h2 id="motionPaletteHeading">Project palette</h2><i class="section-chevron" aria-hidden="true"></i></summary>
+          <div class="section-body">
+            <div class="section-tool-row"><button class="small-action" id="motionRefreshPalette" type="button">Find video colors</button></div>
+            <label class="palette-target-row" for="motionPaletteTarget"><span>Apply swatches to</span><select id="motionPaletteTarget"><option value="accent">Motion accent</option><option value="background">Solid field</option><option value="text">Typography</option></select></label>
+            <div class="universal-swatch-grid" id="motionPaletteSwatches" aria-label="Motion Specimen video colors"></div>
+            <label class="custom-color-row" for="motionAccentColor"><span>Motion accent</span><input id="motionAccentColor" type="color" value="#d6ff45" /><output id="motionAccentColorOutput">#D6FF45</output></label>
+            <label class="custom-color-row" for="motionBackgroundColor"><span>Solid field</span><input id="motionBackgroundColor" type="color" value="#f3f0e8" /><output id="motionBackgroundColorOutput">#F3F0E8</output></label>
+            <label class="custom-color-row" for="motionTextColor"><span>Typography</span><input id="motionTextColor" type="color" value="#171914" /><output id="motionTextColorOutput">#171914</output></label>
+          </div>
+        </details>
+      </aside>
+
+      <section class="workspace motion-specimen-workspace" aria-label="Motion Specimen preview">
+        <div class="workspace-toolbar">
+          <div><span class="workspace-status"><i></i> LIVE COMPOSITION</span><span id="motionLayerStatus">WAITING FOR VIDEO</span></div>
+          <div><span id="motionCanvasRatio" data-canvas-ratio>3:4</span><span id="motionCanvasDimensions">900 × 1200 PX</span></div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell motion-artboard-shell" id="motionArtboardShell">
+            <canvas id="motionCanvas" width="900" height="1200" tabindex="0" aria-label="Motion Specimen canvas. Click a subject to track it through the video."></canvas>
+            <div class="motion-point-marker" id="motionPointMarker" hidden aria-hidden="true"><i></i></div>
+            <div class="empty-overlay" id="motionEmptyOverlay">
+              <span class="motion-empty-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <strong>Begin with movement</strong>
+              <p>Add a video, pause on a clear frame, then click any person or object to build its temporal specimen.</p>
+              <button type="button" id="motionEmptyChooseButton">Choose video</button>
+            </div>
+            <div class="motion-select-overlay" id="motionSelectOverlay" hidden><strong>Click the subject to track</strong><small>Choose a clear point near the center of the person or object</small></div>
+          </div>
+        </div>
+        <p class="workspace-help"><span>TIP</span> Pause on a clear frame before selecting. Shorter spans and closer samples produce the most precise tracks.</p>
       </section>
     </main>
 
@@ -1068,8 +1219,8 @@ OBJECT INDEX</textarea></label>
           <label for="exportDialogSize">
             <span>Output size</span>
             <select id="exportDialogSize">
-              <option value="900">900 × 1200</option>
-              <option value="1350">1350 × 1800</option>
+              <option value="900">Standard · 900 × 1200</option>
+              <option value="1350">High · 1350 × 1800</option>
             </select>
           </label>
           <div class="animated-export-controls" id="animatedExportControls" hidden>
@@ -1087,6 +1238,11 @@ OBJECT INDEX</textarea></label>
             <span><strong>Export image</strong><small>PNG · captures the current canvas frame</small></span>
             <i aria-hidden="true">→</i>
           </button>
+          <button class="export-choice export-choice-jpeg" id="exportJpegChoice" type="button">
+            <span class="export-choice-mark" aria-hidden="true">□</span>
+            <span><strong>Export square JPEG</strong><small>JPEG · 3000 × 3000 · high quality</small></span>
+            <i aria-hidden="true">→</i>
+          </button>
           <button class="export-choice export-choice-motion" id="animatedExport" type="button" hidden>
             <span class="export-choice-mark" aria-hidden="true">▶</span>
             <span><strong>Export 10s video</strong><small id="animatedExportFormat">Browser-native format detected at export</small></span>
@@ -1094,6 +1250,35 @@ OBJECT INDEX</textarea></label>
           </button>
         </div>
         <p class="export-dialog-note" id="exportDialogNote" role="status">Exports are rendered locally on this Mac.</p>
+      </div>
+    </dialog>
+
+    <dialog class="output-format-dialog" id="outputFormatDialog" aria-labelledby="outputFormatTitle">
+      <div class="output-format-frame">
+        <header class="export-dialog-header">
+          <div>
+            <p class="eyebrow">CANVAS / OUTPUT</p>
+            <h2 id="outputFormatTitle">Choose an output format</h2>
+            <p id="outputFormatSummary">Field portrait · 900 × 1200 · reflow</p>
+          </div>
+          <button class="export-dialog-close" id="outputFormatClose" type="button" aria-label="Close output format">×</button>
+        </header>
+        <div class="output-format-presets" role="group" aria-label="Canvas aspect ratio">
+          <button type="button" class="selected" data-output-format="three-four" aria-pressed="true"><i style="--ratio:3/4"></i><span><strong>3:4</strong><small>Field portrait</small></span></button>
+          <button type="button" data-output-format="four-five" aria-pressed="false"><i style="--ratio:4/5"></i><span><strong>4:5</strong><small>Social portrait</small></span></button>
+          <button type="button" data-output-format="square" aria-pressed="false"><i style="--ratio:1/1"></i><span><strong>1:1</strong><small>Square</small></span></button>
+          <button type="button" data-output-format="story" aria-pressed="false"><i style="--ratio:9/16"></i><span><strong>9:16</strong><small>Story / reel</small></span></button>
+          <button type="button" data-output-format="wide" aria-pressed="false"><i style="--ratio:16/9"></i><span><strong>16:9</strong><small>Landscape</small></span></button>
+        </div>
+        <div class="output-format-behavior">
+          <p><strong>Resize behavior</strong><small>Reflow adapts split compositions automatically. Preserve keeps the full design visible. Fill crops overflow.</small></p>
+          <div class="segmented-control" role="group" aria-label="Canvas resize behavior">
+            <button type="button" class="selected" data-output-behavior="reflow" aria-pressed="true">Reflow</button>
+            <button type="button" data-output-behavior="preserve" aria-pressed="false">Preserve</button>
+            <button type="button" data-output-behavior="fill" aria-pressed="false">Fill</button>
+          </div>
+        </div>
+        <p class="output-format-note">Wide reflow places the two halves side-by-side. Tall and square formats keep them stacked. Your source media and composition controls are preserved.</p>
       </div>
     </dialog>
 
@@ -1130,16 +1315,73 @@ OBJECT INDEX</textarea></label>
       </div>
     </dialog>
 
+    <dialog class="icon-picker giphy-picker" id="contourGiphyPicker" aria-labelledby="contourGiphyPickerTitle">
+      <div class="icon-picker-frame giphy-picker-frame">
+        <header class="icon-picker-header">
+          <div>
+            <p class="eyebrow">TRANSPARENT MEDIA</p>
+            <h2 id="contourGiphyPickerTitle">Choose an animated shape</h2>
+            <p>Search transparent GIPHY Stickers, then use one as Contour Loom’s moving shape source.</p>
+          </div>
+          <button class="icon-picker-close" id="contourGiphyPickerClose" type="button" aria-label="Close transparent media picker">×</button>
+        </header>
+        <section class="giphy-key-setup" id="contourGiphyKeySetup" aria-labelledby="contourGiphyKeyHeading" hidden>
+          <div>
+            <p class="eyebrow">ONE-TIME SETUP</p>
+            <h3 id="contourGiphyKeyHeading">Connect a free GIPHY beta key</h3>
+            <p>The key stays only in this browser. A free beta key supports 100 API calls per hour.</p>
+          </div>
+          <form id="contourGiphyKeyForm">
+            <label for="contourGiphyKey">GIPHY API key</label>
+            <div>
+              <input id="contourGiphyKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" />
+              <button type="submit">Save key</button>
+            </div>
+            <p><a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener noreferrer">Create a free key ↗</a></p>
+          </form>
+        </section>
+        <form class="icon-picker-search-row giphy-search-row" id="contourGiphySearchForm">
+          <label for="contourGiphySearch">
+            <img src="/vendor/lucide/icons/search.svg" alt="" />
+            <input id="contourGiphySearch" type="search" autocomplete="off" placeholder="Search birds, dancers, shapes, smoke…" />
+            <kbd>ENTER</kbd>
+          </label>
+          <button type="submit">Search</button>
+          <p id="contourGiphyPickerStatus" aria-live="polite">Search runs only when submitted</p>
+        </form>
+        <div class="giphy-picker-results" id="contourGiphyResults" role="listbox" aria-label="GIPHY transparent stickers">
+          <div class="icon-picker-empty">
+            <strong>Search transparent motion</strong>
+            <span>Try a subject or action. One submitted search uses one API call.</span>
+          </div>
+        </div>
+        <footer class="icon-picker-footer giphy-picker-footer">
+          <div class="icon-picker-selection giphy-picker-selection" id="contourGiphySelection">
+            <span aria-hidden="true"><img src="/vendor/lucide/icons/sticker.svg" alt="" /></span>
+            <p><strong>No sticker selected</strong><small>Choose a transparent animated result</small></p>
+          </div>
+          <div>
+            <button class="giphy-powered" id="contourGiphyManageKey" type="button" title="Change GIPHY API key">POWERED BY GIPHY</button>
+            <button class="icon-picker-cancel" id="contourGiphyPickerCancel" type="button">Cancel</button>
+            <button class="icon-picker-use" id="contourGiphyUse" type="button" disabled>Use as contour</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <iframe name="fieldStudyDownload" title="Export download" hidden></iframe>
+    <script src="/output-format.js"></script>
     <script src="/alignment-guides.js"></script>
     <script src="/project-palette.js"></script>
     <script src="/editorial-text.js"></script>
+    <script src="/feature-flags.js"></script>
     <script src="/app.js"></script>
     <script src="/poetic.js"></script>
     <script src="/vendor/omggif/omggif.js?v=1"></script>
     <script src="/contour.js"></script>
     <script src="/contour-icon-picker.js"></script>
+    <script src="/contour-giphy-picker.js"></script>
     <script src="/image-index.js"></script>
   </body>
 </html>

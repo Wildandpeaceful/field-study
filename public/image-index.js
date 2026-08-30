@@ -8,8 +8,8 @@
   const ctx = canvas.getContext("2d", { alpha: false });
   const fileInput = $("#imageIndexSourceInput");
   const dropZone = $("#imageIndexDropZone");
-  const WIDTH = 900;
-  const HEIGHT = 1200;
+  let WIDTH = 900;
+  let HEIGHT = 1200;
   const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
   const baseLayer = document.createElement("canvas");
   baseLayer.width = WIDTH;
@@ -327,7 +327,7 @@
       width: state.foregroundImage?.naturalWidth || 1,
       height: state.foregroundImage?.naturalHeight || 1,
     };
-    const fit = Math.min(660 / Math.max(1, bounds.width), 840 / Math.max(1, bounds.height));
+    const fit = Math.min(WIDTH * 0.733 / Math.max(1, bounds.width), HEIGHT * 0.7 / Math.max(1, bounds.height));
     const width = bounds.width * fit * state.subject.scale;
     const height = bounds.height * fit * state.subject.scale;
     const centerX = state.subject.x * WIDTH;
@@ -344,8 +344,8 @@
   }
 
   function gridFootprint(geometry) {
-    const baseWidth = Math.max(390, geometry.width + 135);
-    const baseHeight = Math.max(430, geometry.height + 145);
+    const baseWidth = Math.max(WIDTH * 0.433, geometry.width + WIDTH * 0.15);
+    const baseHeight = Math.max(HEIGHT * 0.358, geometry.height + HEIGHT * 0.121);
     const width = baseWidth * state.spread;
     const height = baseHeight * state.spread;
     return {
@@ -435,12 +435,22 @@
   }
 
   function render() {
-    const scale = state.outputWidth / WIDTH;
-    const outputHeight = Math.round(state.outputWidth * HEIGHT / WIDTH);
-    if (canvas.width !== state.outputWidth || canvas.height !== outputHeight) {
-      canvas.width = state.outputWidth;
-      canvas.height = outputHeight;
+    const logical = window.outputFormat.logicalDimensions();
+    WIDTH = logical.width;
+    HEIGHT = logical.height;
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    const scale = output.width / WIDTH;
+    if (canvas.width !== output.width || canvas.height !== output.height) {
+      canvas.width = output.width;
+      canvas.height = output.height;
     }
+    if (baseLayer.width !== WIDTH || baseLayer.height !== HEIGHT) {
+      baseLayer.width = WIDTH;
+      baseLayer.height = HEIGHT;
+    }
+    window.outputFormat.applyShell($("#imageIndexArtboardShell"), false);
+    $("#imageIndexCanvasDimensions").textContent = output.width + " × " + output.height + " PX";
+    window.alignmentGuides?.update?.("index", WIDTH, HEIGHT);
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.fillStyle = state.background;
@@ -649,7 +659,8 @@
       return;
     }
     render();
-    const filename = state.fileBase + "-image-index-" + state.outputWidth + "x" + Math.round(state.outputWidth * 4 / 3) + ".png";
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    const filename = state.fileBase + "-image-index-" + output.width + "x" + output.height + ".png";
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "/api/export";
@@ -668,6 +679,20 @@
     form.submit();
     requestAnimationFrame(() => form.remove());
     showToast("Image Index PNG exported.");
+  }
+
+  function exportJpeg() {
+    if (!state.foregroundImage) {
+      showToast("Add an image before exporting.");
+      return;
+    }
+    window.outputFormat.exportSquareJpeg(canvas, {
+      filename: `${state.fileBase}-image-index-3000x3000.jpg`,
+      getShortEdge: () => state.outputWidth,
+      setShortEdge: (width) => { state.outputWidth = width; },
+      render,
+    });
+    showToast("Image Index 3000 × 3000 JPEG exported.");
   }
 
   function canvasPoint(event) {
@@ -879,16 +904,18 @@
   window.alignmentGuides?.register("index", $("#imageIndexArtboardShell"), WIDTH, HEIGHT);
   window.imageIndex = {
     activate,
+    refreshFormat: render,
     reset,
     exportPng,
+    exportJpeg,
     getExportOptions: () => ({
       canExport: Boolean(state.foregroundImage),
       motionAvailable: false,
       outputWidth: state.outputWidth,
+      outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
     }),
     setOutputWidth: (width) => {
       state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
-      $("#imageIndexCanvasDimensions").textContent = state.outputWidth + " × " + Math.round(state.outputWidth * 4 / 3) + " PX";
       render();
     },
   };

@@ -13,9 +13,10 @@ let preparedSource = null;
 
 function imageIdentity(image) {
   return [
+    image.dataset?.pointExtractorIdentity || "",
     image.currentSrc || image.src || "canvas",
-    image.naturalWidth || image.width,
-    image.naturalHeight || image.height,
+    image.videoWidth || image.naturalWidth || image.width,
+    image.videoHeight || image.naturalHeight || image.height,
   ].join("|");
 }
 

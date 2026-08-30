@@ -195,17 +195,33 @@ class StudioHandler(SimpleHTTPRequestHandler):
         try:
             payload = parse_qs(self.rfile.read(content_length).decode("ascii"), keep_blank_values=True)
             encoded = payload.get("image", [""])[0]
-            if encoded.startswith("data:image/png;base64,"):
-                encoded = encoded.split(",", 1)[1]
+            requested_type = None
+            for prefix, media_type in (
+                ("data:image/png;base64,", "image/png"),
+                ("data:image/jpeg;base64,", "image/jpeg"),
+            ):
+                if encoded.startswith(prefix):
+                    encoded = encoded.split(",", 1)[1]
+                    requested_type = media_type
+                    break
             image_bytes = base64.b64decode(encoded, validate=True)
-            if not image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
-                raise ValueError("Export data was not a PNG")
+            if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+                media_type = "image/png"
+                extension = ".png"
+            elif image_bytes.startswith(b"\xff\xd8\xff"):
+                media_type = "image/jpeg"
+                extension = ".jpg"
+            else:
+                raise ValueError("Export data was not a supported PNG or JPEG image")
+            if requested_type and requested_type != media_type:
+                raise ValueError("Export media type did not match its image data")
             requested_name = payload.get("filename", ["field-study.png"])[0]
             safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "-", requested_name).strip("-.")
-            if not safe_name.lower().endswith(".png"):
-                safe_name += ".png"
+            valid_extensions = (".jpg", ".jpeg") if media_type == "image/jpeg" else (".png",)
+            if not safe_name.lower().endswith(valid_extensions):
+                safe_name = re.sub(r"\.[^.]+$", "", safe_name) + extension
             self.send_response(200)
-            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Type", media_type)
             self.send_header("Content-Disposition", f'attachment; filename="{safe_name or "field-study.png"}"')
             self.send_header("Content-Length", str(len(image_bytes)))
             self.end_headers()

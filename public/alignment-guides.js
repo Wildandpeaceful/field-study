@@ -47,11 +47,18 @@
     instance.horizontal.classList.remove("active");
   }
 
+  function update(tool, width, height) {
+    const instance = registry.get(tool);
+    if (!instance) return;
+    instance.width = Math.max(1, Number(width) || instance.width);
+    instance.height = Math.max(1, Number(height) || instance.height);
+  }
+
   function snap(value, target, threshold) {
     return Math.abs(value - target) <= threshold
       ? { value: target, aligned: true }
       : { value, aligned: false };
   }
 
-  window.alignmentGuides = { register, show, hide, snap };
+  window.alignmentGuides = { register, update, show, hide, snap };
 })();

@@ -4,7 +4,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const canvas = $("#poeticCanvas");
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const designCanvas = document.createElement("canvas");
   const fileInput = $("#poeticSourceInput");
   const dropZone = $("#poeticDropZone");
   const WIDTH = 900;
@@ -16,6 +16,9 @@
   const MAX_GIF_PIXELS = 16_000_000;
   const MAX_GIF_FRAMES = 2_000;
   const MAX_CLIP_DURATION = 60;
+  designCanvas.width = WIDTH;
+  designCanvas.height = HEIGHT;
+  const ctx = designCanvas.getContext("2d", { alpha: false });
   let motionFrameHandle = null;
   let videoFrameHandle = null;
   let videoFrameDriver = null;
@@ -586,14 +589,14 @@
     return items;
   }
 
-  function layoutCaptionItems(items) {
-    ctx.font = "400 " + state.fontSize + "px " + fontFamily();
+  function layoutCaptionItems(items, target = ctx, maxWidth = 790) {
+    target.font = "400 " + state.fontSize + "px " + fontFamily();
     const gap = Math.max(7, state.fontSize * 0.24);
     const brackets = bracketCharacters();
-    const bracketWidth = brackets[0] ? ctx.measureText(brackets[0]).width + ctx.measureText(brackets[1]).width + gap * 0.7 : 0;
+    const bracketWidth = brackets[0] ? target.measureText(brackets[0]).width + target.measureText(brackets[1]).width + gap * 0.7 : 0;
     const measured = items.map((item) => {
       if (item.type === "word") {
-        return { ...item, width: ctx.measureText(item.text).width, height: state.fontSize * 1.15 };
+        return { ...item, width: target.measureText(item.text).width, height: state.fontSize * 1.15 };
       }
       const rect = fragmentRect(state.fragments[item.fragmentIndex]);
       const displayHeight = state.fontSize * 1.42;
@@ -608,7 +611,6 @@
       };
     });
     const lines = [];
-    const maxWidth = 790;
     let line = [];
     let lineWidth = 0;
     measured.forEach((item) => {
@@ -629,45 +631,45 @@
     return { lines, gap };
   }
 
-  function captionBounds(layout = null) {
-    const nextLayout = layout || layoutCaptionItems(captionItems(null));
-    if (!nextLayout.lines.length) return { x: 70, y: 170, width: 760, height: 180 };
+  function captionBounds(layout = null, rect = { x: 0, y: 0, width: WIDTH, height: SPLIT_Y }, target = ctx) {
+    const nextLayout = layout || layoutCaptionItems(captionItems(null), target, Math.max(120, rect.width - 110));
+    if (!nextLayout.lines.length) return { x: rect.x + 70, y: rect.y + Math.max(38, rect.height * 0.27), width: Math.max(120, rect.width - 140), height: 180 };
     const totalHeight = nextLayout.lines.reduce((sum, line) => sum + line.height, 0);
     const width = Math.max(120, ...nextLayout.lines.map((line) => line.width));
-    const y = Math.max(38, (SPLIT_Y - totalHeight) / 2);
-    return { x: (WIDTH - width) / 2, y, width, height: totalHeight };
+    const y = rect.y + Math.max(38, (rect.height - totalHeight) / 2);
+    return { x: rect.x + (rect.width - width) / 2, y, width, height: totalHeight };
   }
 
-  function drawCaption(photoLayer) {
+  function drawCaption(photoLayer, target = ctx, rect = { x: 0, y: 0, width: WIDTH, height: SPLIT_Y }) {
     const items = captionItems(photoLayer);
     if (!items.length) return;
-    const layout = layoutCaptionItems(items);
+    const layout = layoutCaptionItems(items, target, Math.max(120, rect.width - 110));
     const totalHeight = layout.lines.reduce((sum, line) => sum + line.height, 0);
-    const bounds = captionBounds(layout);
-    window.editorialText.transformContext(ctx, bounds, state.captionTransform, () => {
-      let y = Math.max(38, (SPLIT_Y - totalHeight) / 2);
-      ctx.fillStyle = state.textColor;
-      ctx.textBaseline = "alphabetic";
-      ctx.font = "400 " + state.fontSize + "px " + fontFamily();
+    const bounds = captionBounds(layout, rect, target);
+    window.editorialText.transformContext(target, bounds, state.captionTransform, () => {
+      let y = rect.y + Math.max(38, (rect.height - totalHeight) / 2);
+      target.fillStyle = state.textColor;
+      target.textBaseline = "alphabetic";
+      target.font = "400 " + state.fontSize + "px " + fontFamily();
       layout.lines.forEach((line) => {
-        let x = (WIDTH - line.width) / 2;
+        let x = rect.x + (rect.width - line.width) / 2;
         const baseline = y + line.height / 2 + state.fontSize * 0.34;
         line.items.forEach((item, itemIndex) => {
           if (itemIndex) x += layout.gap;
           if (item.type === "word") {
-            ctx.fillStyle = state.textColor;
-            ctx.fillText(item.text, x, baseline);
+            target.fillStyle = state.textColor;
+            target.fillText(item.text, x, baseline);
             x += item.width;
             return;
           }
           const bracketGap = item.brackets[0] ? layout.gap * 0.35 : 0;
           if (item.brackets[0]) {
-            ctx.fillStyle = state.textColor;
-            ctx.fillText(item.brackets[0], x, baseline);
-            x += ctx.measureText(item.brackets[0]).width + bracketGap;
+            target.fillStyle = state.textColor;
+            target.fillText(item.brackets[0], x, baseline);
+            x += target.measureText(item.brackets[0]).width + bracketGap;
           }
           const imageY = y + (line.height - item.height) / 2;
-          ctx.drawImage(
+          target.drawImage(
             photoLayer,
             item.sourceRect.x,
             item.sourceRect.y,
@@ -681,9 +683,9 @@
           x += item.imageWidth;
           if (item.brackets[1]) {
             x += bracketGap;
-            ctx.fillStyle = state.textColor;
-            ctx.fillText(item.brackets[1], x, baseline);
-            x += ctx.measureText(item.brackets[1]).width;
+            target.fillStyle = state.textColor;
+            target.fillText(item.brackets[1], x, baseline);
+            x += target.measureText(item.brackets[1]).width;
           }
         });
         y += line.height;
@@ -705,19 +707,18 @@
   }
 
   function render(options = {}) {
-    const scale = state.outputWidth / WIDTH;
-    const outputHeight = Math.round(state.outputWidth * 4 / 3);
-    if (canvas.width !== state.outputWidth || canvas.height !== outputHeight) {
-      canvas.width = state.outputWidth;
-      canvas.height = outputHeight;
+    if (designCanvas.width !== WIDTH || designCanvas.height !== HEIGHT) {
+      designCanvas.width = WIDTH;
+      designCanvas.height = HEIGHT;
     }
     ctx.save();
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.fillStyle = state.background;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     if (!state.image) {
       ctx.restore();
+      presentOutput();
       return;
     }
     const photoLayer = buildPhotoLayer();
@@ -725,13 +726,29 @@
     drawCropWindows();
     ctx.fillStyle = state.background;
     ctx.fillRect(0, 0, WIDTH, SPLIT_Y);
-    drawCaption(photoLayer);
+    if (!window.outputFormat.isReflow()) drawCaption(photoLayer);
     ctx.fillStyle = state.textColor;
     ctx.globalAlpha = 0.4;
     ctx.fillRect(0, SPLIT_Y - 1, WIDTH, 2);
     ctx.globalAlpha = 1;
     ctx.restore();
+    presentOutput(photoLayer);
     if (options.refreshOverlays !== false) window.editorialText?.refresh("poetic");
+  }
+
+  function presentOutput(photoLayer = null) {
+    const logical = window.outputFormat.logicalDimensions();
+    window.alignmentGuides?.update?.("poetic", logical.width, logical.height);
+    const output = window.outputFormat.presentSplit(canvas, designCanvas, SPLIT_Y, {
+      shortEdge: state.outputWidth,
+      shell: $("#poeticArtboardShell"),
+      background: state.background,
+      upperBackground: state.background,
+      lowerBackground: state.background,
+      divider: state.textColor,
+      upperOverlay: photoLayer ? (target, rect) => drawCaption(photoLayer, target, rect) : undefined,
+    });
+    $("#poeticCanvasDimensions").textContent = output.width + " × " + output.height + " PX";
   }
 
   function syncControls() {
@@ -749,7 +766,8 @@
     $("#poeticTextValue").textContent = state.textColor.toUpperCase();
     $("#poeticPhotoScale").value = Math.round(state.photo.scale * 100);
     $("#poeticPhotoScaleOutput").textContent = Math.round(state.photo.scale * 100) + "%";
-    $("#poeticCanvasDimensions").textContent = state.outputWidth + " × " + Math.round(state.outputWidth * 4 / 3) + " PX";
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    $("#poeticCanvasDimensions").textContent = output.width + " × " + output.height + " PX";
     $("#poeticFragmentStatus").textContent = state.fragmentCount + (state.fragmentCount === 1 ? " FRAGMENT" : " FRAGMENTS");
     const moving = hasMotionSource();
     const playing = moving && motionIsPlaying();
@@ -848,7 +866,8 @@
       return;
     }
     render();
-    const filename = state.fileBase + "-poetic-fragments-" + state.outputWidth + "x" + Math.round(state.outputWidth * 4 / 3) + ".png";
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    const filename = state.fileBase + "-poetic-fragments-" + output.width + "x" + output.height + ".png";
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "/api/export";
@@ -867,6 +886,20 @@
     form.submit();
     requestAnimationFrame(() => form.remove());
     showToast("Poetic Fragments PNG exported.");
+  }
+
+  function exportJpeg() {
+    if (!state.image) {
+      showToast("Add source media before exporting.");
+      return;
+    }
+    window.outputFormat.exportSquareJpeg(canvas, {
+      filename: `${state.fileBase}-poetic-fragments-3000x3000.jpg`,
+      getShortEdge: () => state.outputWidth,
+      setShortEdge: (width) => { state.outputWidth = width; },
+      render,
+    });
+    showToast("Poetic Fragments 3000 × 3000 JPEG exported.");
   }
 
   function downloadBlob(blob, filename) {
@@ -968,10 +1001,11 @@
 
   function canvasPoint(event) {
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width * WIDTH,
-      y: (event.clientY - rect.top) / rect.height * HEIGHT,
-    };
+    const logical = window.outputFormat.logicalDimensions();
+    return window.outputFormat.unprojectPoint({
+      x: (event.clientX - rect.left) / rect.width * logical.width,
+      y: (event.clientY - rect.top) / rect.height * logical.height,
+    }, SPLIT_Y, WIDTH, HEIGHT);
   }
 
   function fragmentAtPoint(point) {
@@ -1178,10 +1212,14 @@
     panel: "#poeticEditorialPanel",
     width: WIDTH,
     height: HEIGHT,
+    getDimensions: () => window.outputFormat.logicalDimensions(),
+    projectBounds: (bounds) => window.outputFormat.isReflow() ? bounds : window.outputFormat.projectRect(bounds, SPLIT_Y, WIDTH, HEIGHT),
+    projectGuides: (guides) => window.outputFormat.isReflow() ? guides : window.outputFormat.projectGuides(guides, SPLIT_Y, WIDTH, HEIGHT),
+    unprojectPoint: (point) => window.outputFormat.isReflow() ? point : window.outputFormat.unprojectPoint(point, SPLIT_Y, WIDTH, HEIGHT),
     getLayers: () => [{
       id: "caption",
       label: "Caption + fragments",
-      bounds: captionBounds(),
+      bounds: captionBounds(null, window.outputFormat.isReflow() ? window.outputFormat.splitPanels(SPLIT_Y, WIDTH, HEIGHT)[0] : undefined),
       transform: state.captionTransform,
       color: state.textColor,
       enabled: Boolean(state.image && state.caption.trim()),
@@ -1195,20 +1233,28 @@
       Object.assign(state.captionTransform, patch);
     },
     resetLayer: () => { state.captionTransform = defaultCaptionTransform(); },
-    getAlignment: () => ({ x: 450, y: SPLIT_Y / 2, threshold: 12, region: { x: 0, y: 0, width: WIDTH, height: SPLIT_Y } }),
+    getAlignment: () => {
+      const region = window.outputFormat.isReflow()
+        ? window.outputFormat.splitPanels(SPLIT_Y, WIDTH, HEIGHT)[0]
+        : { x: 0, y: 0, width: WIDTH, height: SPLIT_Y };
+      return { x: region.x + region.width / 2, y: region.y + region.height / 2, threshold: 12, region };
+    },
     render,
   });
 
   window.poeticFragments = {
     activate,
     deactivate,
+    refreshFormat: render,
     reset,
     exportPng,
+    exportJpeg,
     exportAnimated,
     getExportOptions: () => ({
       canExport: Boolean(state.image),
       motionAvailable: hasMotionSource() && Boolean(state.image && preferredRecordingFormat()),
       outputWidth: state.outputWidth,
+      outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
       clipDuration: state.clipDuration,
       recording: state.recording,
       audioEnabled: Boolean(sourceVideo() && state.sound),

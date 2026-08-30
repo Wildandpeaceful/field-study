@@ -22,10 +22,12 @@
 
   function canvasPoint(instance, event) {
     const rect = instance.canvas.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width * instance.config.width,
-      y: (event.clientY - rect.top) / rect.height * instance.config.height,
+    const dimensions = instance.config.getDimensions?.() || { width: instance.config.width, height: instance.config.height };
+    const point = {
+      x: (event.clientX - rect.left) / rect.width * dimensions.width,
+      y: (event.clientY - rect.top) / rect.height * dimensions.height,
     };
+    return instance.config.unprojectPoint?.(point) || point;
   }
 
   function layerCenter(layer) {
@@ -169,7 +171,8 @@
         x: nextX,
         y: nextY,
       });
-      window.alignmentGuides?.show(instance.tool, { vertical, horizontal, region: alignment.region });
+      const guideAlignment = instance.config.projectGuides?.({ vertical, horizontal, region: alignment.region }) || { vertical, horizontal, region: alignment.region };
+      window.alignmentGuides?.show(instance.tool, guideAlignment);
     } else if (interaction.type === "scale") {
       window.alignmentGuides?.hide(instance.tool);
       const distance = Math.max(8, Math.hypot(point.x - interaction.center.x, point.y - interaction.center.y));
@@ -245,10 +248,17 @@
     layers.forEach((layer) => {
       const zone = instance.zones.get(layer.id) || createZone(instance, layer);
       const transform = layer.transform;
-      zone.style.left = (layer.bounds.x + transform.x) / instance.config.width * 100 + "%";
-      zone.style.top = (layer.bounds.y + transform.y) / instance.config.height * 100 + "%";
-      zone.style.width = layer.bounds.width / instance.config.width * 100 + "%";
-      zone.style.height = layer.bounds.height / instance.config.height * 100 + "%";
+      const projected = instance.config.projectBounds?.({
+        x: layer.bounds.x + transform.x,
+        y: layer.bounds.y + transform.y,
+        width: layer.bounds.width,
+        height: layer.bounds.height,
+      }) || { x: layer.bounds.x + transform.x, y: layer.bounds.y + transform.y, width: layer.bounds.width, height: layer.bounds.height };
+      const dimensions = instance.config.getDimensions?.() || { width: instance.config.width, height: instance.config.height };
+      zone.style.left = projected.x / dimensions.width * 100 + "%";
+      zone.style.top = projected.y / dimensions.height * 100 + "%";
+      zone.style.width = projected.width / dimensions.width * 100 + "%";
+      zone.style.height = projected.height / dimensions.height * 100 + "%";
       zone.style.transform = `rotate(${transform.rotation}deg) scale(${transform.scale})`;
       zone.classList.toggle("selected", selection?.tool === tool && selection.id === layer.id);
       zone.classList.toggle("locked", Boolean(transform.locked));

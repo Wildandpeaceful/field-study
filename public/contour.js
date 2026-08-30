@@ -4,7 +4,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const canvas = $("#contourCanvas");
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const designCanvas = document.createElement("canvas");
   const WIDTH = 900;
   const HEIGHT = 1200;
   const SPLIT_Y = 600;
@@ -17,6 +17,9 @@
   const VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime,video/x-m4v,image/gif";
   const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
   const SOURCE_ACCEPT = `${IMAGE_ACCEPT},${VIDEO_ACCEPT}`;
+  designCanvas.width = WIDTH;
+  designCanvas.height = HEIGHT;
+  const ctx = designCanvas.getContext("2d", { alpha: false });
 
   let videoFrameHandle = null;
   let fallbackFrameHandle = null;
@@ -89,6 +92,9 @@
     bounds: null,
     outputWidth: 900,
     dragging: null,
+    loadingTexture: false,
+    loadingMask: false,
+    swappingSources: false,
     suggestionIndex: 0,
   };
 
@@ -576,7 +582,9 @@
     const nextKind = file.type.startsWith("video/") ? "video" : isGifFile(file) ? "gif" : "image";
     const previousUrl = state.textureUrl;
     const nextUrl = URL.createObjectURL(file);
+    state.loadingTexture = true;
     stopVideoRenderLoop();
+    syncControls();
     try {
       const media = nextKind === "video"
         ? await loadVideo($("#contourTextureVideoThumb"), nextUrl)
@@ -591,6 +599,7 @@
       state.textureFile = file;
       state.textureKind = nextKind;
       state.textureSound = false;
+      state.loadingTexture = false;
       if (nextKind === "video") media.muted = true;
       state.fileBase = safeFileBase(file.name);
       state.photo = { x: 0.5, y: 0.5, scale: 1 };
@@ -646,6 +655,7 @@
       state.textureKind = "image";
       state.textureGif = null;
       state.textureSound = false;
+      state.loadingTexture = false;
       setStatus("error", error.message);
       syncControls();
       render();
@@ -663,7 +673,9 @@
     const nextKind = file.type.startsWith("video/") ? "video" : isGifFile(file) ? "gif" : "image";
     const previousUrl = state.maskUrl;
     const nextUrl = URL.createObjectURL(file);
+    state.loadingMask = true;
     stopVideoRenderLoop();
+    syncControls();
     try {
       const media = nextKind === "video"
         ? await loadVideo($("#contourMaskVideoThumb"), nextUrl)
@@ -678,6 +690,7 @@
       state.maskFile = file;
       state.maskKind = nextKind;
       state.maskSound = false;
+      state.loadingMask = false;
       if (nextKind === "video") media.muted = true;
       state.maskSource = options.source || "upload";
       state.lucideIcon = options.icon || null;
@@ -697,6 +710,8 @@
       $("#contourMaskName").textContent = options.label || file.name;
       $("#contourMaskMeta").textContent = state.maskSource === "lucide"
         ? "LUCIDE ICON · LOCAL SVG"
+        : state.maskSource === "giphy" && nextKind === "gif"
+          ? `GIPHY STICKER · ${media.frameCount} FRAMES · ${media.duration.toFixed(1)}S · AUTO LOOP`
         : nextKind === "video"
           ? `${fileMeta(file)} · ${formatTime(media.duration)} · ANIMATED MASK`
           : nextKind === "gif"
@@ -736,6 +751,7 @@
       state.maskKind = "image";
       state.maskGif = null;
       state.maskSound = false;
+      state.loadingMask = false;
       setStatus("error", error.message);
       syncControls();
       render();
@@ -756,6 +772,30 @@
       label: icon.label,
     });
     if (!accepted) throw new Error(`The ${icon.label || icon.name} icon could not be decoded.`);
+    state.activeLayer = "motif";
+    $("#contourPositionControls").open = true;
+    syncControls();
+  }
+
+  async function useGiphySticker(sticker) {
+    const mediaUrl = sticker?.images?.original?.url
+      || sticker?.images?.downsized?.url
+      || sticker?.images?.fixed_height?.url;
+    if (!mediaUrl) throw new Error("Choose a GIPHY Sticker with an available GIF rendition.");
+
+    const response = await fetch(mediaUrl, { mode: "cors", credentials: "omit" });
+    if (!response.ok) throw new Error(`GIPHY media returned ${response.status}.`);
+    const blob = await response.blob();
+    if (!blob.size) throw new Error("The selected GIPHY Sticker was empty.");
+    if (blob.size > MAX_GIF_BYTES) throw new Error("That GIPHY Sticker is too large to animate locally. Choose a smaller result.");
+
+    const base = safeFileBase(sticker.title || sticker.slug || `giphy-${sticker.id}`);
+    const file = new File([blob], `${base}.gif`, { type: "image/gif" });
+    const accepted = await handleMaskFile(file, {
+      source: "giphy",
+      label: sticker.title || "GIPHY Sticker",
+    });
+    if (!accepted) throw new Error("The selected GIPHY Sticker could not be decoded.");
     state.activeLayer = "motif";
     $("#contourPositionControls").open = true;
     syncControls();
@@ -819,6 +859,47 @@
     syncControls();
     render();
     showToast("Contour source removed.");
+  }
+
+  async function swapMediaSources() {
+    const canSwap = Boolean(
+      state.textureFile
+      && state.textureImage
+      && state.maskFile
+      && state.maskImage
+      && state.maskSource === "upload"
+      && !state.recording
+      && !state.swappingSources
+    );
+    if (!canSwap) {
+      showToast(state.maskSource === "lucide"
+        ? "Choose uploaded contour media before swapping source roles."
+        : "Add both texture and contour media before swapping their roles.");
+      return;
+    }
+
+    const previousTextureFile = state.textureFile;
+    const previousMaskFile = state.maskFile;
+    state.swappingSources = true;
+    setStatus("working", "Swapping texture and contour media roles");
+    syncControls();
+
+    try {
+      const textureAccepted = await handleTextureFile(previousMaskFile);
+      if (!textureAccepted) throw new Error("The previous contour could not be used as texture media.");
+      const maskAccepted = await handleMaskFile(previousTextureFile, { source: "upload" });
+      if (!maskAccepted) throw new Error("The previous texture could not be used as contour media.");
+      state.activeLayer = "motif";
+      updateReadyState();
+      showToast("Source roles swapped · the former contour is now the texture, and the former texture drives the motif.");
+    } catch (error) {
+      setStatus("error", error.message);
+      showToast(error.message);
+    } finally {
+      state.swappingSources = false;
+      syncControls();
+      render();
+    }
   }
 
   function resetPhotoPosition(showMessage = true) {
@@ -1197,40 +1278,41 @@
     };
   }
 
-  function fitText(text, maxWidth, weight, maxSize) {
+  function fitText(target, text, maxWidth, weight, maxSize) {
     let size = maxSize;
     while (size > 11) {
-      ctx.font = `${weight} ${size}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
-      if (ctx.measureText(text).width <= maxWidth) break;
+      target.font = `${weight} ${size}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+      if (target.measureText(text).width <= maxWidth) break;
       size -= 1;
     }
     return size;
   }
 
-  function drawCopyBlock(title, note, centerX, centerY, maxWidth, color) {
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = color;
-    const titleSize = fitText(title, maxWidth, 750, 18);
-    ctx.font = `750 ${titleSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
-    ctx.fillText(title, centerX, centerY - 12);
-    const noteSize = fitText(note, maxWidth, 500, 16);
-    ctx.font = `500 ${noteSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
-    ctx.fillText(note, centerX, centerY + 13);
+  function drawCopyBlock(target, title, note, centerX, centerY, maxWidth, color) {
+    target.textAlign = "center";
+    target.textBaseline = "middle";
+    target.fillStyle = color;
+    const titleSize = fitText(target, title, maxWidth, 750, 18);
+    target.font = `750 ${titleSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+    target.fillText(title, centerX, centerY - 12);
+    const noteSize = fitText(target, note, maxWidth, 500, 16);
+    target.font = `500 ${noteSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+    target.fillText(note, centerX, centerY + 13);
   }
 
-  function photoRailBounds() {
-    return { x: 36, y: SPLIT_Y + 7, width: WIDTH - 72, height: 40 };
+  function photoRailBounds(rect = { x: 0, y: SPLIT_Y, width: WIDTH, height: PHOTO_HEIGHT }) {
+    const margin = Math.max(24, Math.min(46, rect.width * 0.052));
+    return { x: rect.x + margin - 10, y: rect.y + 7, width: rect.width - (margin - 10) * 2, height: 40 };
   }
 
-  function sampledPhotoRailColor() {
+  function sampledPhotoRailColor(target = ctx, rect = { x: 0, y: SPLIT_Y, width: WIDTH, height: PHOTO_HEIGHT }) {
     try {
-      const scale = ctx.getTransform().a || 1;
-      const x = Math.max(0, Math.round(20 * scale));
-      const y = Math.max(0, Math.round((SPLIT_Y + 8) * scale));
-      const width = Math.min(ctx.canvas.width - x, Math.round((WIDTH - 40) * scale));
-      const height = Math.min(ctx.canvas.height - y, Math.max(1, Math.round(42 * scale)));
-      const pixels = ctx.getImageData(x, y, width, height).data;
+      const scale = target.getTransform().a || 1;
+      const x = Math.max(0, Math.round((rect.x + 20) * scale));
+      const y = Math.max(0, Math.round((rect.y + 8) * scale));
+      const width = Math.min(target.canvas.width - x, Math.round((rect.width - 40) * scale));
+      const height = Math.min(target.canvas.height - y, Math.max(1, Math.round(42 * scale)));
+      const pixels = target.getImageData(x, y, width, height).data;
       let brightness = 0;
       let samples = 0;
       const stride = Math.max(4, Math.floor(pixels.length / 1200 / 4) * 4);
@@ -1244,78 +1326,88 @@
     }
   }
 
-  function drawPhotoWordRail() {
+  function drawPhotoWordRail(target = ctx, rect = { x: 0, y: SPLIT_Y, width: WIDTH, height: PHOTO_HEIGHT }) {
     if (!state.textureImage || !state.showPhotoWords || !state.photoWords.trim()) return;
     const words = state.photoWords.trim().split(/\s+/).filter(Boolean).slice(0, 14);
     if (!words.length) return;
 
-    const margin = 46;
-    const availableWidth = WIDTH - margin * 2;
-    const fontSize = words.length > 11 ? 13 : words.length > 8 ? 15 : 17;
+    const margin = Math.max(24, Math.min(46, rect.width * 0.052));
+    const availableWidth = rect.width - margin * 2;
+    let fontSize = words.length > 11 ? 13 : words.length > 8 ? 15 : 17;
+    if (words.length > 1) {
+      const slotWidth = availableWidth / (words.length - 1);
+      while (fontSize > 9) {
+        target.font = `700 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+        if (Math.max(...words.map((word) => target.measureText(word).width)) <= slotWidth * 0.88) break;
+        fontSize -= 1;
+      }
+    }
     let fallbackColor;
     if (state.photoWordTone === "light") fallbackColor = "#ffffff";
     else if (state.photoWordTone === "dark") fallbackColor = "#171914";
-    else fallbackColor = sampledPhotoRailColor();
+    else fallbackColor = sampledPhotoRailColor(target, rect);
     const color = state.textLayers.rail.color || fallbackColor;
-    const bounds = photoRailBounds();
+    const bounds = photoRailBounds(rect);
 
-    window.editorialText.transformContext(ctx, bounds, state.textLayers.rail, () => {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, SPLIT_Y, WIDTH, PHOTO_HEIGHT);
-      ctx.clip();
-      ctx.fillStyle = color;
-      ctx.font = `700 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
-      ctx.textBaseline = "middle";
-      ctx.shadowColor = color === "#ffffff" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.24)";
-      ctx.shadowBlur = 1.5;
-      ctx.shadowOffsetY = 1;
+    window.editorialText.transformContext(target, bounds, state.textLayers.rail, () => {
+      target.save();
+      target.beginPath();
+      target.rect(rect.x, rect.y, rect.width, rect.height);
+      target.clip();
+      target.fillStyle = color;
+      target.font = `700 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+      target.textBaseline = "middle";
+      target.shadowColor = color === "#ffffff" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.24)";
+      target.shadowBlur = 1.5;
+      target.shadowOffsetY = 1;
       words.forEach((word, index) => {
-        const x = words.length === 1 ? WIDTH / 2 : margin + availableWidth * index / (words.length - 1);
-        ctx.textAlign = words.length === 1 ? "center" : index === 0 ? "left" : index === words.length - 1 ? "right" : "center";
-        ctx.fillText(word, x, SPLIT_Y + 27);
+        const x = words.length === 1 ? rect.x + rect.width / 2 : rect.x + margin + availableWidth * index / (words.length - 1);
+        target.textAlign = words.length === 1 ? "center" : index === 0 ? "left" : index === words.length - 1 ? "right" : "center";
+        target.fillText(word, x, rect.y + 27);
       });
-      ctx.restore();
+      target.restore();
     });
   }
 
-  function copyLayerBounds(id) {
+  function copyLayerBounds(id, rect = { x: 0, y: 0, width: WIDTH, height: SPLIT_Y }) {
     if (state.layout === "baseline") {
+      const width = Math.max(150, Math.min(370, rect.width * 0.411));
       return id === "left"
-        ? { x: 45, y: SPLIT_Y - 82, width: 370, height: 64 }
-        : { x: 485, y: SPLIT_Y - 82, width: 370, height: 64 };
+        ? { x: rect.x + rect.width * 0.05, y: rect.y + rect.height - 82, width, height: 64 }
+        : { x: rect.x + rect.width - rect.width * 0.05 - width, y: rect.y + rect.height - 82, width, height: 64 };
     }
+    const width = Math.max(145, Math.min(240, rect.width * 0.267));
     return id === "left"
-      ? { x: 38, y: 260, width: 240, height: 72 }
-      : { x: 622, y: 260, width: 240, height: 72 };
+      ? { x: rect.x + rect.width * 0.042, y: rect.y + rect.height * 0.433, width, height: 72 }
+      : { x: rect.x + rect.width - rect.width * 0.042 - width, y: rect.y + rect.height * 0.433, width, height: 72 };
   }
 
-  function drawTextLayer(id, draw) {
+  function drawTextLayer(target, id, rect, draw) {
     const transform = state.textLayers[id];
-    const bounds = copyLayerBounds(id);
+    const bounds = copyLayerBounds(id, rect);
     const color = transform.color || state.textColor;
-    window.editorialText.transformContext(ctx, bounds, transform, () => draw(color));
+    window.editorialText.transformContext(target, bounds, transform, () => draw(color));
   }
 
-  function drawCopy() {
+  function drawCopy(target = ctx, rect = { x: 0, y: 0, width: WIDTH, height: SPLIT_Y }) {
     if (state.layout === "baseline") {
-      drawTextLayer("left", (color) => drawCopyBlock(state.leftTitle, state.leftNote, 230, SPLIT_Y - 49, 370, color));
-      drawTextLayer("right", (color) => drawCopyBlock(state.rightTitle, state.rightNote, 670, SPLIT_Y - 49, 370, color));
+      const width = Math.max(150, Math.min(370, rect.width * 0.411));
+      drawTextLayer(target, "left", rect, (color) => drawCopyBlock(target, state.leftTitle, state.leftNote, rect.x + rect.width * 0.256, rect.y + rect.height - 49, width, color));
+      drawTextLayer(target, "right", rect, (color) => drawCopyBlock(target, state.rightTitle, state.rightNote, rect.x + rect.width * 0.744, rect.y + rect.height - 49, width, color));
       return;
     }
-    drawTextLayer("left", (color) => drawCopyBlock(state.leftTitle, state.leftNote, 158, 296, 230, color));
-    drawTextLayer("right", (color) => drawCopyBlock(state.rightTitle, state.rightNote, 742, 296, 230, color));
+    const width = Math.max(145, Math.min(230, rect.width * 0.256));
+    drawTextLayer(target, "left", rect, (color) => drawCopyBlock(target, state.leftTitle, state.leftNote, rect.x + rect.width * 0.176, rect.y + rect.height * 0.493, width, color));
+    drawTextLayer(target, "right", rect, (color) => drawCopyBlock(target, state.rightTitle, state.rightNote, rect.x + rect.width * 0.824, rect.y + rect.height * 0.493, width, color));
   }
 
   function render(options = {}) {
-    const scale = state.outputWidth / WIDTH;
-    const outputHeight = Math.round(state.outputWidth * 4 / 3);
-    if (canvas.width !== state.outputWidth || canvas.height !== outputHeight) {
-      canvas.width = state.outputWidth;
-      canvas.height = outputHeight;
+    if (designCanvas.width !== WIDTH || designCanvas.height !== HEIGHT) {
+      designCanvas.width = WIDTH;
+      designCanvas.height = HEIGHT;
     }
     ctx.save();
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.fillStyle = state.fieldColor;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -1324,14 +1416,33 @@
     if (state.textureImage) ctx.drawImage(photoLayer, 0, SPLIT_Y);
     drawUpperMotif(photoLayer);
     if (state.lowerEcho) drawMotif(photoLayer, true);
-    drawPhotoWordRail();
-    drawCopy();
+    if (!window.outputFormat.isReflow()) {
+      drawPhotoWordRail();
+      drawCopy();
+    }
     ctx.fillStyle = state.textColor;
     ctx.globalAlpha = 0.24;
     ctx.fillRect(0, SPLIT_Y - 1, WIDTH, 2);
     ctx.globalAlpha = 1;
     ctx.restore();
+    presentOutput();
     if (options.refreshOverlays !== false) window.editorialText?.refresh("contour");
+  }
+
+  function presentOutput() {
+    const logical = window.outputFormat.logicalDimensions();
+    window.alignmentGuides?.update?.("contour", logical.width, logical.height);
+    const output = window.outputFormat.presentSplit(canvas, designCanvas, SPLIT_Y, {
+      shortEdge: state.outputWidth,
+      shell: $("#contourArtboardShell"),
+      background: state.fieldColor,
+      upperBackground: state.fieldColor,
+      lowerBackground: state.fieldColor,
+      divider: state.textColor,
+      upperOverlay: (target, rect) => drawCopy(target, rect),
+      lowerOverlay: (target, rect) => drawPhotoWordRail(target, rect),
+    });
+    $("#contourCanvasDimensions").textContent = output.width + " × " + output.height + " PX";
   }
 
   function selectLayer(layer, openControls = false) {
@@ -1440,10 +1551,25 @@
     $("#animatedExportFormat").textContent = recordingFormat
       ? `Records locally as ${recordingFormat.label} · ${activeSoundVideo() ? "sound on" : "silent"} · current playheads`
       : "Animated export is unavailable in this browser";
-    $("#contourClearTexture").disabled = state.recording;
-    $("#contourTextureInput").disabled = state.recording;
-    $("#contourClearMask").disabled = state.recording;
-    $("#contourMaskInput").disabled = state.recording;
+    $("#contourClearTexture").disabled = state.recording || state.swappingSources || state.loadingTexture;
+    $("#contourTextureInput").disabled = state.recording || state.swappingSources || state.loadingTexture;
+    $("#contourClearMask").disabled = state.recording || state.swappingSources || state.loadingMask;
+    $("#contourMaskInput").disabled = state.recording || state.swappingSources || state.loadingMask;
+    const canSwapSources = Boolean(
+      state.textureFile
+      && state.textureImage
+      && state.maskFile
+      && state.maskImage
+      && state.maskSource === "upload"
+      && !state.loadingTexture
+      && !state.loadingMask
+    );
+    const swapButton = $("#contourSwapImages");
+    swapButton.hidden = !canSwapSources && !state.swappingSources;
+    swapButton.disabled = !canSwapSources || state.recording || state.swappingSources;
+    swapButton.classList.toggle("working", state.swappingSources);
+    $("strong", swapButton).textContent = state.swappingSources ? "Swapping roles" : "Swap image roles";
+    $("#contourOpenIconPicker").disabled = state.recording || state.swappingSources || state.loadingMask;
     $("#contourGridSize").value = state.gridSize;
     $("#contourGridSizeOutput").textContent = state.gridSize + " × " + state.gridSize;
     $("#contourSensitivity").value = state.sensitivity;
@@ -1479,7 +1605,8 @@
     } else {
       $("#contourLayerScaleOutput").textContent = "—";
     }
-    $("#contourCanvasDimensions").textContent = state.outputWidth + " × " + Math.round(state.outputWidth * 4 / 3) + " PX";
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    $("#contourCanvasDimensions").textContent = output.width + " × " + output.height + " PX";
     updateLayerStatus();
     $("#contourDragHintText").textContent = state.linkContours
       ? "Upper and lower contours are linked"
@@ -1658,8 +1785,8 @@
       return;
     }
     render();
-    const height = Math.round(state.outputWidth * 4 / 3);
-    const filename = state.fileBase + "-contour-loom-" + state.outputWidth + "x" + height + ".png";
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    const filename = state.fileBase + "-contour-loom-" + output.width + "x" + output.height + ".png";
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "/api/export";
@@ -1678,6 +1805,20 @@
     form.submit();
     requestAnimationFrame(() => form.remove());
     showToast("Contour Loom PNG exported.");
+  }
+
+  function exportJpeg() {
+    if (!state.textureImage || !state.maskImage) {
+      showToast("Add both a texture and contour source before exporting.");
+      return;
+    }
+    window.outputFormat.exportSquareJpeg(canvas, {
+      filename: `${state.fileBase}-contour-loom-3000x3000.jpg`,
+      getShortEdge: () => state.outputWidth,
+      setShortEdge: (width) => { state.outputWidth = width; },
+      render,
+    });
+    showToast("Contour Loom 3000 × 3000 JPEG exported.");
   }
 
   function downloadBlob(blob, filename) {
@@ -1794,10 +1935,11 @@
 
   function canvasPoint(event) {
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width * WIDTH,
-      y: (event.clientY - rect.top) / rect.height * HEIGHT,
-    };
+    const logical = window.outputFormat.logicalDimensions();
+    return window.outputFormat.unprojectPoint({
+      x: (event.clientX - rect.left) / rect.width * logical.width,
+      y: (event.clientY - rect.top) / rect.height * logical.height,
+    }, SPLIT_Y, WIDTH, HEIGHT);
   }
 
   function pointHitsLowerEcho(point) {
@@ -1885,6 +2027,7 @@
   $("#contourResetSelectedLayer").addEventListener("click", resetSelectedPosition);
   $("#contourClearTexture").addEventListener("click", clearTexture);
   $("#contourClearMask").addEventListener("click", clearMask);
+  $("#contourSwapImages").addEventListener("click", swapMediaSources);
   $("#contourVideoPlayToggle").addEventListener("click", () => {
     const video = textureVideo();
     if (!video) return;
@@ -2151,32 +2294,48 @@
     panel: "#contourEditorialPanel",
     width: WIDTH,
     height: HEIGHT,
-    getLayers: () => [
-      { id: "left", label: "Left editorial label", bounds: copyLayerBounds("left"), enabled: true },
-      { id: "right", label: "Right editorial label", bounds: copyLayerBounds("right"), enabled: true },
-      { id: "rail", label: "Photo word rail", bounds: photoRailBounds(), enabled: Boolean(state.textureImage && state.showPhotoWords) },
-    ].map((layer) => ({
-      ...layer,
-      transform: state.textLayers[layer.id],
-      color: state.textLayers[layer.id].color || (layer.id === "rail" && state.photoWordTone === "dark" ? "#171914" : layer.id === "rail" ? "#ffffff" : state.textColor),
-    })),
+    getDimensions: () => window.outputFormat.logicalDimensions(),
+    projectBounds: (bounds) => window.outputFormat.isReflow() ? bounds : window.outputFormat.projectRect(bounds, SPLIT_Y, WIDTH, HEIGHT),
+    projectGuides: (guides) => window.outputFormat.isReflow() ? guides : window.outputFormat.projectGuides(guides, SPLIT_Y, WIDTH, HEIGHT),
+    unprojectPoint: (point) => window.outputFormat.isReflow() ? point : window.outputFormat.unprojectPoint(point, SPLIT_Y, WIDTH, HEIGHT),
+    getLayers: () => {
+      const panels = window.outputFormat.isReflow() ? window.outputFormat.splitPanels(SPLIT_Y, WIDTH, HEIGHT) : null;
+      const upperRect = panels?.[0];
+      const lowerRect = panels?.[1];
+      return [
+        { id: "left", label: "Left editorial label", bounds: copyLayerBounds("left", upperRect), enabled: true },
+        { id: "right", label: "Right editorial label", bounds: copyLayerBounds("right", upperRect), enabled: true },
+        { id: "rail", label: "Photo word rail", bounds: photoRailBounds(lowerRect), enabled: Boolean(state.textureImage && state.showPhotoWords) },
+      ].map((layer) => ({
+        ...layer,
+        transform: state.textLayers[layer.id],
+        color: state.textLayers[layer.id].color || (layer.id === "rail" && state.photoWordTone === "dark" ? "#171914" : layer.id === "rail" ? "#ffffff" : state.textColor),
+      }));
+    },
     updateLayer: (id, patch) => Object.assign(state.textLayers[id], patch),
     resetLayer: (id) => { state.textLayers[id] = defaultTextTransform(); },
-    getAlignment: (layer) => layer.id === "rail"
-      ? { x: WIDTH / 2, y: SPLIT_Y + PHOTO_HEIGHT / 2, threshold: 12, region: { x: 0, y: SPLIT_Y, width: WIDTH, height: PHOTO_HEIGHT } }
-      : { x: WIDTH / 2, y: SPLIT_Y / 2, threshold: 12, region: { x: 0, y: 0, width: WIDTH, height: SPLIT_Y } },
+    getAlignment: (layer) => {
+      const panels = window.outputFormat.isReflow()
+        ? window.outputFormat.splitPanels(SPLIT_Y, WIDTH, HEIGHT)
+        : [{ x: 0, y: 0, width: WIDTH, height: SPLIT_Y }, { x: 0, y: SPLIT_Y, width: WIDTH, height: PHOTO_HEIGHT }];
+      const region = layer.id === "rail" ? panels[1] : panels[0];
+      return { x: region.x + region.width / 2, y: region.y + region.height / 2, threshold: 12, region };
+    },
     render,
   });
 
   window.contourLoom = {
     activate,
+    refreshFormat: render,
     reset,
     exportPng,
+    exportJpeg,
     exportAnimated,
     getExportOptions: () => ({
       canExport: Boolean(state.textureImage && state.maskImage),
       motionAvailable: hasMotionSource() && Boolean(state.textureImage && state.maskImage && preferredRecordingFormat()),
       outputWidth: state.outputWidth,
+      outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
       clipDuration: state.clipDuration,
       recording: state.recording,
       audioEnabled: Boolean(activeSoundVideo()),
@@ -2193,6 +2352,7 @@
       render();
     },
     useLucideIcon,
+    useGiphySticker,
     getCurrentLucideIcon: () => state.lucideIcon,
   };
   updateReadyState();

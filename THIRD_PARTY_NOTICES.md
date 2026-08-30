@@ -20,6 +20,13 @@ Field/Study includes the dependency-free `omggif` GIF89a decoder so Contour Loom
 - License: MIT
 - Vendored license: `public/vendor/omggif/LICENSE`
 
+## GIPHY API (optional network service)
+
+Contour Loom optionally connects to the GIPHY Sticker Search API when an artist supplies their own API key. Field/Study does not bundle GIPHY media or credentials. Search results remain subject to GIPHY's API Terms of Service and attribution requirements.
+
+- Service: [GIPHY Developers](https://developers.giphy.com/)
+- Terms: [GIPHY API Terms of Service](https://support.giphy.com/hc/en-us/articles/360020027752-GIPHY-API-Terms-of-Service)
+
 ## MediaPipe Tasks Vision and MagicTouch
 
 Field/Study includes the MediaPipe Tasks Vision 1.0.1 browser runtime and the MagicTouch interactive-segmentation model so artists can select arbitrary visible objects with a point prompt while remaining offline.

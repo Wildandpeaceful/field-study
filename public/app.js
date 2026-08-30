@@ -5,7 +5,10 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
   const canvas = $("#compositionCanvas");
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const designCanvas = document.createElement("canvas");
+  designCanvas.width = 900;
+  designCanvas.height = 1200;
+  const ctx = designCanvas.getContext("2d", { alpha: false });
   const fileInput = $("#fileInput");
   const dropZone = $("#dropZone");
   const lowerFileInput = $("#lowerFileInput");
@@ -37,6 +40,7 @@
     sourceImage: null,
     foregroundImage: null,
     foregroundSourceImage: null,
+    silhouetteImage: null,
     foregroundAssets: [],
     foregroundBounds: null,
     sourceUrl: null,
@@ -145,6 +149,7 @@
     state.foregroundUrl = null;
     state.foregroundImage = null;
     state.foregroundSourceImage = null;
+    state.silhouetteImage = null;
     state.foregroundAssets = [];
     state.foregroundBounds = null;
     $("#foregroundAssetPanel").hidden = true;
@@ -192,10 +197,10 @@
       processingOverlay.hidden = true;
       const assetCount = state.foregroundAssets.length || 1;
       setProcessStatus("ready", `${assetCount} foreground asset${assetCount === 1 ? "" : "s"} isolated locally`);
-      resetTransformsForLayout();
+      autoCompose(false);
       syncControls();
       render();
-      showToast("Foreground extracted. Drag the subject to compose.");
+      showToast("Foreground extracted and composed. Drag any layer to refine it.");
     } catch (error) {
       if (error.name === "AbortError") return;
       console.error(error);
@@ -207,6 +212,7 @@
         state.foregroundSourceImage = createFallbackForeground(state.sourceImage);
         state.foregroundAssets = detectForegroundAssets(state.foregroundSourceImage);
         composeForegroundAssets(false);
+        autoCompose(false);
         const visionRuntimeUnavailable = /ANECF|inference plan|CVPixelBuffer|VisionCore/i.test(error.message);
         const statusMessage = visionRuntimeUnavailable
           ? "Apple Vision is unavailable in this launch · using a soft local fallback"
@@ -237,6 +243,7 @@
 
     if (state.lowerUrl) URL.revokeObjectURL(state.lowerUrl);
     state.lowerFile = file;
+    state.lowerImage = null;
     state.lowerUrl = URL.createObjectURL(file);
     $("#lowerSourceThumb").src = state.lowerUrl;
     $("#lowerSourceName").textContent = file.name;
@@ -244,6 +251,7 @@
     $("#lowerSourcePreview").hidden = false;
     $("#lowerDropIdle").hidden = true;
     setLowerProcessStatus("working", "Loading the independent lower frame");
+    syncControls();
 
     try {
       state.lowerImage = await loadImage(state.lowerUrl);
@@ -421,10 +429,11 @@
     const queue = new Int32Array(labels.length);
     const components = [];
     let label = 0;
+    const alphaThreshold = 6;
     const minimumArea = Math.max(18, Math.round(labels.length * 0.0007));
 
     for (let start = 0; start < labels.length; start += 1) {
-      if (labels[start] || pixels[start * 4 + 3] <= 18) continue;
+      if (labels[start] || pixels[start * 4 + 3] <= alphaThreshold) continue;
       label += 1;
       let head = 0;
       let tail = 1;
@@ -451,7 +460,7 @@
             const ny = y + oy;
             if (nx < 0 || ny < 0 || nx >= sample.width || ny >= sample.height) continue;
             const neighbor = ny * sample.width + nx;
-            if (labels[neighbor] || pixels[neighbor * 4 + 3] <= 18) continue;
+            if (labels[neighbor] || pixels[neighbor * 4 + 3] <= alphaThreshold) continue;
             labels[neighbor] = label;
             queue[tail++] = neighbor;
           }
@@ -481,8 +490,24 @@
         mask.height = sample.height;
         const maskContext = mask.getContext("2d");
         const maskFrame = maskContext.createImageData(mask.width, mask.height);
+        const membership = new Uint8Array(labels.length);
         for (let pixelIndex = 0; pixelIndex < labels.length; pixelIndex += 1) {
-          if (labels[pixelIndex] === component.label) {
+          if (labels[pixelIndex] !== component.label) continue;
+          const pixelX = pixelIndex % sample.width;
+          const pixelY = Math.floor(pixelIndex / sample.width);
+          for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+            for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+              const neighborX = pixelX + offsetX;
+              const neighborY = pixelY + offsetY;
+              if (neighborX < 0 || neighborY < 0 || neighborX >= sample.width || neighborY >= sample.height) continue;
+              const neighbor = neighborY * sample.width + neighborX;
+              if (labels[neighbor] && labels[neighbor] !== component.label) continue;
+              membership[neighbor] = 1;
+            }
+          }
+        }
+        for (let pixelIndex = 0; pixelIndex < membership.length; pixelIndex += 1) {
+          if (membership[pixelIndex]) {
             const offset = pixelIndex * 4;
             maskFrame.data[offset] = 255;
             maskFrame.data[offset + 1] = 255;
@@ -497,6 +522,77 @@
         assetContext.globalCompositeOperation = "source-over";
         return { id: `asset-${index + 1}`, canvas: assetCanvas, x, y, selected: true };
       });
+  }
+
+  function maxFilterAlpha(source, width, height, radius) {
+    if (!radius) return source;
+    const horizontal = new Uint8ClampedArray(source.length);
+    const output = new Uint8ClampedArray(source.length);
+    const rowIndices = new Int32Array(width + radius * 2 + 1);
+    const rowValues = new Uint8Array(width + radius * 2 + 1);
+    const columnIndices = new Int32Array(height + radius * 2 + 1);
+    const columnValues = new Uint8Array(height + radius * 2 + 1);
+
+    for (let y = 0; y < height; y += 1) {
+      let head = 0;
+      let tail = 0;
+      for (let sampleX = -radius; sampleX < width + radius; sampleX += 1) {
+        const value = sampleX < 0 || sampleX >= width ? 0 : source[y * width + sampleX];
+        const oldest = sampleX - radius * 2;
+        while (head < tail && rowIndices[head] < oldest) head += 1;
+        while (head < tail && rowValues[tail - 1] <= value) tail -= 1;
+        rowIndices[tail] = sampleX;
+        rowValues[tail] = value;
+        tail += 1;
+        const outputX = sampleX - radius;
+        if (outputX >= 0 && outputX < width) horizontal[y * width + outputX] = rowValues[head];
+      }
+    }
+
+    for (let x = 0; x < width; x += 1) {
+      let head = 0;
+      let tail = 0;
+      for (let sampleY = -radius; sampleY < height + radius; sampleY += 1) {
+        const value = sampleY < 0 || sampleY >= height ? 0 : horizontal[sampleY * width + x];
+        const oldest = sampleY - radius * 2;
+        while (head < tail && columnIndices[head] < oldest) head += 1;
+        while (head < tail && columnValues[tail - 1] <= value) tail -= 1;
+        columnIndices[tail] = sampleY;
+        columnValues[tail] = value;
+        tail += 1;
+        const outputY = sampleY - radius;
+        if (outputY >= 0 && outputY < height) output[outputY * width + x] = columnValues[head];
+      }
+    }
+    return output;
+  }
+
+  function buildSilhouetteCoverage(source) {
+    if (!source) return null;
+    const sourceWidth = source.naturalWidth || source.width;
+    const sourceHeight = source.naturalHeight || source.height;
+    const workingScale = Math.min(1, 1600 / Math.max(sourceWidth, sourceHeight));
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(sourceWidth * workingScale));
+    output.height = Math.max(1, Math.round(sourceHeight * workingScale));
+    const outputContext = output.getContext("2d", { willReadFrequently: true });
+    outputContext.imageSmoothingEnabled = true;
+    outputContext.imageSmoothingQuality = "high";
+    outputContext.drawImage(source, 0, 0, output.width, output.height);
+    const frame = outputContext.getImageData(0, 0, output.width, output.height);
+    const alpha = new Uint8ClampedArray(output.width * output.height);
+    for (let index = 0; index < alpha.length; index += 1) alpha[index] = frame.data[index * 4 + 3];
+    const coverageRadius = clamp(Math.round(Math.max(output.width, output.height) * 0.003), 2, 6);
+    const expandedAlpha = maxFilterAlpha(alpha, output.width, output.height, coverageRadius);
+    for (let index = 0; index < expandedAlpha.length; index += 1) {
+      const offset = index * 4;
+      frame.data[offset] = 255;
+      frame.data[offset + 1] = 255;
+      frame.data[offset + 2] = 255;
+      frame.data[offset + 3] = expandedAlpha[index];
+    }
+    outputContext.putImageData(frame, 0, 0);
+    return output;
   }
 
   function renderForegroundAssets() {
@@ -525,8 +621,13 @@
     if (!state.foregroundSourceImage) return;
     const width = state.foregroundSourceImage.naturalWidth || state.foregroundSourceImage.width;
     const height = state.foregroundSourceImage.naturalHeight || state.foregroundSourceImage.height;
+    const coverageSource = document.createElement("canvas");
+    coverageSource.width = width;
+    coverageSource.height = height;
+    const coverageContext = coverageSource.getContext("2d");
     if (!state.foregroundAssets.length) {
       state.foregroundImage = state.foregroundSourceImage;
+      coverageContext.drawImage(state.foregroundSourceImage, 0, 0);
     } else {
       const combined = document.createElement("canvas");
       combined.width = width;
@@ -534,9 +635,11 @@
       const combinedContext = combined.getContext("2d");
       state.foregroundAssets.filter((asset) => asset.selected).forEach((asset) => {
         combinedContext.drawImage(asset.canvas, asset.x, asset.y);
+        coverageContext.drawImage(asset.canvas, asset.x, asset.y);
       });
       state.foregroundImage = combined;
     }
+    state.silhouetteImage = buildSilhouetteCoverage(coverageSource);
     state.foregroundBounds = findAlphaBounds(state.foregroundImage);
     renderForegroundAssets();
     if (refresh) {
@@ -835,6 +938,44 @@
     updateLayerScaleControl();
   }
 
+  function autoCompose(showMessage = true) {
+    if (!state.sourceImage || !state.foregroundBounds) {
+      if (showMessage) showToast("Add and extract a subject before using Auto Compose.");
+      return;
+    }
+    const bounds = state.foregroundBounds;
+    const selectedAssetCount = state.foregroundAssets.filter((asset) => asset.selected).length || 1;
+    const subjectAspect = bounds.width / Math.max(1, bounds.height);
+    const output = window.outputFormat?.logicalDimensions?.() || { width: 900, height: 1200 };
+    const outputAspect = output.width / Math.max(1, output.height);
+
+    if (selectedAssetCount > 1 || subjectAspect > 1.08) {
+      state.layout = "baseline";
+    } else if (outputAspect > 1.18 || subjectAspect > 0.78) {
+      state.layout = "editorial";
+    } else {
+      state.layout = "orbit";
+    }
+
+    resetTransformsForLayout();
+    const baseMaxWidth = state.layout === "editorial" ? 350 : 330;
+    const baseMaxHeight = state.layout === "baseline" ? 405 : 365;
+    const baseScale = Math.min(baseMaxWidth / bounds.width, baseMaxHeight / bounds.height);
+    const baseWidth = bounds.width * baseScale;
+    const baseHeight = bounds.height * baseScale;
+    const desiredWidth = state.layout === "baseline"
+      ? Math.min(650, 390 + Math.min(5, selectedAssetCount) * 48)
+      : state.layout === "editorial" ? 410 : 370;
+    const desiredHeight = state.layout === "baseline" ? 365 : 410;
+    state.subject.scale = clamp(Math.min(desiredWidth / baseWidth, desiredHeight / baseHeight), 0.72, 2.1);
+    state.activeLayer = "subject";
+    state.background = selectStrongBackground(state.harmonious);
+    syncControls();
+    renderSwatches();
+    render();
+    if (showMessage) showToast(`Auto Compose selected ${state.layout} and fitted ${selectedAssetCount === 1 ? "the subject" : `${selectedAssetCount} assets`}.`);
+  }
+
   function resetComposition() {
     state.effect = "original";
     state.effectSize = 12;
@@ -857,6 +998,7 @@
     } else {
       state.background = "#d6ff45";
     }
+    composeForegroundAssets(false);
     resetTransformsForLayout();
     syncControls();
     renderSwatches();
@@ -889,8 +1031,11 @@
     effectSizeOutput.textContent = state.effectSize;
     pixelContrast.value = state.pixelContrast;
     pixelContrastOutput.textContent = state.pixelContrast > 0 ? `+${state.pixelContrast}%` : "0";
+    $("#effectControls").hidden = state.effect === "original";
     $("#pixelControls").hidden = state.effect !== "pixel";
     const separateSources = state.sourceMode === "separate";
+    const canSwapSources = separateSources
+      && Boolean(state.file && state.sourceImage && state.lowerFile && state.lowerImage);
     $("#lowerSourceBlock").hidden = !separateSources;
     $("#sourceModeNote").textContent = separateSources
       ? "The subject and lower frame use independent photographs."
@@ -901,6 +1046,9 @@
     $("#silhouetteHint").textContent = separateSources
       ? "Available when one image drives both halves"
       : "Fill the subject in the lower photo";
+    $("#swapSourceImages").hidden = !canSwapSources;
+    $("#swapSourceImages").disabled = !canSwapSources || state.processing;
+    $("#autoCompose").disabled = !state.sourceImage || !state.foregroundBounds || state.processing;
     $("#showPhotoWords").checked = state.showPhotoWords;
     $("#photoWordFields").hidden = !state.showPhotoWords;
     $("#photoWordsInput").value = state.photoWords;
@@ -958,20 +1106,19 @@
   function render() {
     const logicalWidth = 900;
     const logicalHeight = 1200;
-    const scale = state.outputWidth / logicalWidth;
-    const expectedHeight = Math.round(state.outputWidth * 4 / 3);
-    if (canvas.width !== state.outputWidth || canvas.height !== expectedHeight) {
-      canvas.width = state.outputWidth;
-      canvas.height = expectedHeight;
+    if (designCanvas.width !== logicalWidth || designCanvas.height !== logicalHeight) {
+      designCanvas.width = logicalWidth;
+      designCanvas.height = logicalHeight;
     }
     ctx.save();
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     ctx.fillStyle = "#f0efe8";
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
     if (!state.sourceImage || !state.foregroundImage) {
       ctx.restore();
+      presentOutput();
       return;
     }
 
@@ -981,13 +1128,30 @@
     ctx.fillStyle = state.background;
     ctx.fillRect(topRect.x, topRect.y, topRect.width, topRect.height);
     drawTopSubject(ctx, topRect);
-    drawEditorialCopy(ctx, topRect);
+    if (!window.outputFormat.isReflow()) drawEditorialCopy(ctx, topRect);
     drawLowerPhoto(ctx, bottomRect);
-    drawPhotoWordRail(ctx, bottomRect);
+    if (!window.outputFormat.isReflow()) drawPhotoWordRail(ctx, bottomRect);
     ctx.fillStyle = contrastTextColor(state.background, 0.44);
     ctx.fillRect(0, splitY - 1, logicalWidth, 2);
     ctx.restore();
+    presentOutput();
     window.editorialText?.refresh("foreground");
+  }
+
+  function presentOutput() {
+    const logical = window.outputFormat.logicalDimensions();
+    window.alignmentGuides?.update?.("foreground", logical.width, logical.height);
+    const output = window.outputFormat.presentSplit(canvas, designCanvas, 632, {
+      shortEdge: state.outputWidth,
+      shell: $("#artboardShell"),
+      background: "#f0efe8",
+      upperBackground: state.background,
+      lowerBackground: "#f0efe8",
+      divider: contrastTextColor(state.background, 0.44),
+      upperOverlay: (target, rect) => drawEditorialCopy(target, rect),
+      lowerOverlay: (target, rect) => drawPhotoWordRail(target, rect),
+    });
+    $("#canvasDimensions").textContent = `${output.width} × ${output.height} PX`;
   }
 
   function subjectGeometry(topRect) {
@@ -1124,7 +1288,9 @@
       mask.width = 900;
       mask.height = 1200;
       const mctx = mask.getContext("2d");
-      mctx.drawImage(state.foregroundImage, geometry.x, geometry.y, geometry.width, geometry.height);
+      mctx.imageSmoothingEnabled = true;
+      mctx.imageSmoothingQuality = "high";
+      mctx.drawImage(state.silhouetteImage || state.foregroundImage, geometry.x, geometry.y, geometry.width, geometry.height);
       mctx.globalCompositeOperation = "source-in";
       mctx.fillStyle = state.background;
       mctx.fillRect(rect.x, rect.y, rect.width, rect.height);
@@ -1141,7 +1307,15 @@
 
     const margin = 46;
     const availableWidth = rect.width - margin * 2;
-    const fontSize = words.length > 11 ? 13 : words.length > 8 ? 15 : 17;
+    let fontSize = words.length > 11 ? 13 : words.length > 8 ? 15 : 17;
+    if (words.length > 1) {
+      const slotWidth = availableWidth / (words.length - 1);
+      while (fontSize > 9) {
+        target.font = `700 ${fontSize}px ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif`;
+        if (Math.max(...words.map((word) => target.measureText(word).width)) <= slotWidth * 0.88) break;
+        fontSize -= 1;
+      }
+    }
     const y = rect.y + 27;
     let fallbackColor;
     if (state.photoWordTone === "light") fallbackColor = "#ffffff";
@@ -1201,20 +1375,27 @@
     }
   }
 
-  function copyLayerBounds(id, rect = { width: 900, height: 632 }) {
+  function copyLayerBounds(id, rect = { x: 0, y: 0, width: 900, height: 632 }) {
+    const margin = Math.max(30, Math.min(58, rect.width * 0.065));
     if (state.layout === "orbit") {
+      const width = Math.max(150, Math.min(245, rect.width * 0.272));
+      const y = rect.y + rect.height * 0.43;
       return id === "left"
-        ? { x: 48, y: 272, width: 245, height: 92 }
-        : { x: 607, y: 272, width: 245, height: 108 };
+        ? { x: rect.x + margin - 10, y, width, height: 92 }
+        : { x: rect.x + rect.width - margin - width + 10, y, width, height: 108 };
     }
     if (state.layout === "baseline") {
-      if (id === "left") return { x: 38, y: rect.height - 92, width: 235, height: 82 };
-      if (id === "center") return { x: 285, y: rect.height - 82, width: 330, height: 42 };
-      return { x: 627, y: rect.height - 92, width: 235, height: 82 };
+      const sideWidth = Math.max(145, Math.min(235, rect.width * 0.262));
+      const centerWidth = Math.max(180, Math.min(330, rect.width * 0.367));
+      if (id === "left") return { x: rect.x + margin - 10, y: rect.y + rect.height - 92, width: sideWidth, height: 82 };
+      if (id === "center") return { x: rect.x + (rect.width - centerWidth) / 2, y: rect.y + rect.height - 82, width: centerWidth, height: 42 };
+      return { x: rect.x + rect.width - margin - sideWidth + 10, y: rect.y + rect.height - 92, width: sideWidth, height: 82 };
     }
+    const columnX = rect.x + rect.width * 0.61;
+    const columnWidth = Math.max(170, Math.min(330, rect.x + rect.width - margin - columnX));
     return id === "left"
-      ? { x: 538, y: 164, width: 310, height: 160 }
-      : { x: 538, y: 330, width: 330, height: 42 };
+      ? { x: columnX - 10, y: rect.y + rect.height * 0.26, width: columnWidth, height: 160 }
+      : { x: columnX - 10, y: rect.y + rect.height * 0.52, width: columnWidth, height: 42 };
   }
 
   function drawForegroundTextLayer(target, id, rect, fallbackColor, draw) {
@@ -1225,39 +1406,47 @@
 
   function drawEditorialCopy(target, rect) {
     const textColor = contrastTextColor(state.background);
+    const margin = Math.max(30, Math.min(58, rect.width * 0.065));
 
     if (state.layout === "orbit") {
+      const width = Math.max(140, Math.min(235, rect.width * 0.262));
+      const y = rect.y + rect.height * 0.45;
       drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
         target.textBaseline = "top";
-        drawCopyBlock(target, state.copy.title, state.copy.note, 58, 284, 235, "left", color);
+        drawCopyBlock(target, state.copy.title, state.copy.note, rect.x + margin, y, width, "left", color);
       });
       drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
         target.textBaseline = "top";
-        drawCopyBlock(target, state.copy.style, `${state.copy.credit}\n${paletteLabel()}`, 842, 284, 235, "right", color);
+        drawCopyBlock(target, state.copy.style, `${state.copy.credit}\n${paletteLabel()}`, rect.x + rect.width - margin, y, width, "right", color);
       });
     } else if (state.layout === "baseline") {
+      const sideWidth = Math.max(140, Math.min(225, rect.width * 0.25));
+      const centerWidth = Math.max(180, Math.min(330, rect.width * 0.367));
+      const y = rect.y + rect.height - 81;
       drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
         target.textBaseline = "top";
-        drawCopyBlock(target, state.copy.title, state.copy.credit, 48, rect.height - 81, 225, "left", color);
+        drawCopyBlock(target, state.copy.title, state.copy.credit, rect.x + margin, y, sideWidth, "left", color);
       });
       drawForegroundTextLayer(target, "center", rect, textColor, (color) => {
         target.textBaseline = "top";
         target.font = "600 14px ui-sans-serif, -apple-system, sans-serif";
         target.textAlign = "center";
-        drawTrackingLine(target, state.copy.note.toUpperCase(), 450, rect.height - 62, 330, color);
+        drawTrackingLine(target, state.copy.note.toUpperCase(), rect.x + rect.width / 2, rect.y + rect.height - 62, centerWidth, color);
       });
       drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
         target.textBaseline = "top";
-        drawCopyBlock(target, state.copy.style, paletteLabel(), 852, rect.height - 81, 225, "right", color);
+        drawCopyBlock(target, state.copy.style, paletteLabel(), rect.x + rect.width - margin, y, sideWidth, "right", color);
       });
     } else {
+      const x = rect.x + rect.width * 0.61;
+      const width = Math.max(160, Math.min(290, rect.x + rect.width - margin - x));
       drawForegroundTextLayer(target, "left", rect, textColor, (color) => {
         target.fillStyle = color;
         target.textBaseline = "top";
         target.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
         target.textAlign = "left";
-        target.fillText("FIELD / 01", 548, 178);
-        drawCopyBlock(target, state.copy.title, state.copy.note, 548, 218, 290, "left", color, 22);
+        target.fillText("FIELD / 01", x, rect.y + rect.height * 0.282);
+        drawCopyBlock(target, state.copy.title, state.copy.note, x, rect.y + rect.height * 0.345, width, "left", color, 22);
       });
       drawForegroundTextLayer(target, "right", rect, textColor, (color) => {
         const baseAlpha = target.globalAlpha;
@@ -1266,7 +1455,7 @@
         target.textBaseline = "top";
         target.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
         target.textAlign = "left";
-        target.fillText(`${state.copy.style.toUpperCase()} · ${paletteLabel()}`, 548, 350);
+        target.fillText(`${state.copy.style.toUpperCase()} · ${paletteLabel()}`, x, rect.y + rect.height * 0.554);
         target.globalAlpha = baseAlpha;
       });
     }
@@ -1416,7 +1605,8 @@
       return;
     }
     render();
-    const filename = `${state.fileBase}-${state.effect}-${state.layout}-${state.outputWidth}x${Math.round(state.outputWidth * 4 / 3)}.png`;
+    const output = window.outputFormat.dimensions(state.outputWidth);
+    const filename = `${state.fileBase}-${state.effect}-${state.layout}-${output.width}x${output.height}.png`;
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "/api/export";
@@ -1437,12 +1627,27 @@
     showToast("High-resolution PNG exported.");
   }
 
+  function exportJpeg() {
+    if (!state.sourceImage || !state.foregroundImage) {
+      showToast("Add a photograph before exporting.");
+      return;
+    }
+    window.outputFormat.exportSquareJpeg(canvas, {
+      filename: `${state.fileBase}-${state.effect}-${state.layout}-3000x3000.jpg`,
+      getShortEdge: () => state.outputWidth,
+      setShortEdge: (width) => { state.outputWidth = width; },
+      render,
+    });
+    showToast("3000 × 3000 JPEG exported.");
+  }
+
   function canvasPoint(event) {
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width * 900,
-      y: (event.clientY - rect.top) / rect.height * 1200,
-    };
+    const logical = window.outputFormat.logicalDimensions();
+    return window.outputFormat.unprojectPoint({
+      x: (event.clientX - rect.left) / rect.width * logical.width,
+      y: (event.clientY - rect.top) / rect.height * logical.height,
+    }, 632, 900, 1200);
   }
 
   fileInput.addEventListener("change", () => handleFile(fileInput.files?.[0]));
@@ -1468,6 +1673,7 @@
     lowerDropZone.classList.remove("dragover");
   }));
   lowerDropZone.addEventListener("drop", (event) => handleLowerFile(event.dataTransfer?.files?.[0]));
+  $("#swapSourceImages").addEventListener("click", swapSourceImages);
 
   $$('[data-source-mode]').forEach((button) => button.addEventListener("click", () => {
     setSourceMode(button.dataset.sourceMode);
@@ -1555,6 +1761,8 @@
     state.paletteTarget = event.target.value;
     renderSwatches();
   });
+
+  $("#autoCompose").addEventListener("click", () => autoCompose(true));
 
   $("#foregroundSelectAll").addEventListener("click", () => {
     state.foregroundAssets.forEach((asset) => { asset.selected = true; });
@@ -1647,23 +1855,28 @@
 
   const foregroundExportController = {
     exportPng,
+    exportJpeg,
+    refreshFormat: render,
     getExportOptions: () => ({
       canExport: Boolean(state.sourceImage && state.foregroundImage),
       motionAvailable: false,
       outputWidth: state.outputWidth,
+      outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
     }),
     setOutputWidth: (width) => {
       state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
-      $("#canvasDimensions").textContent = `${state.outputWidth} × ${Math.round(state.outputWidth * 4 / 3)} PX`;
       render();
     },
   };
+
+  const motionSpecimenEnabled = Boolean(window.fieldStudyFeatures?.motionSpecimen);
 
   function activeExportController() {
     const activeTool = document.body.dataset.activeTool;
     if (activeTool === "poetic") return window.poeticFragments;
     if (activeTool === "contour") return window.contourLoom;
     if (activeTool === "index") return window.imageIndex;
+    if (motionSpecimenEnabled && activeTool === "motion") return window.motionSpecimen;
     return foregroundExportController;
   }
 
@@ -1674,16 +1887,24 @@
       poetic: "Poetic Fragments",
       contour: "Contour Loom",
       index: "Image Index",
+      ...(motionSpecimenEnabled ? { motion: "Motion Specimen" } : {}),
     };
     const controller = activeExportController();
     const options = controller?.getExportOptions?.() || { canExport: false, motionAvailable: false, outputWidth: 900 };
+    const standardSize = window.outputFormat.dimensions(900);
+    const highSize = window.outputFormat.dimensions(1350);
+    const selectedSize = window.outputFormat.dimensions(options.outputWidth || 900);
     const motionAvailable = Boolean(options.motionAvailable);
     const clipDuration = Math.max(3, Math.min(60, Number(options.clipDuration) || 10));
     const formatLabel = options.format?.label || "browser-native video";
     $("#exportDialogTool").textContent = labels[activeTool];
     $("#exportDialogSize").value = String(options.outputWidth || 900);
+    const sizeOptions = $("#exportDialogSize").options;
+    if (sizeOptions[0]) sizeOptions[0].textContent = `Standard · ${standardSize.width} × ${standardSize.height}`;
+    if (sizeOptions[1]) sizeOptions[1].textContent = `High · ${highSize.width} × ${highSize.height}`;
     $("#exportImageChoice").disabled = !options.canExport || Boolean(options.recording);
-    $("#exportImageChoice small").textContent = `PNG · ${options.outputWidth || 900} × ${Math.round((options.outputWidth || 900) * 4 / 3)} · current frame`;
+    $("#exportJpegChoice").disabled = !options.canExport || Boolean(options.recording);
+    $("#exportImageChoice small").textContent = `PNG · ${selectedSize.width} × ${selectedSize.height} · current frame`;
     $("#animatedExportControls").hidden = !motionAvailable;
     $("#animatedExport").hidden = !motionAvailable;
     $("#animatedClipDuration").value = clipDuration;
@@ -1714,9 +1935,11 @@
 
   function activateTool(tool) {
     const availableTools = new Set(["foreground", "poetic", "contour", "index"]);
+    if (motionSpecimenEnabled) availableTools.add("motion");
     const nextTool = availableTools.has(tool) ? tool : "foreground";
     const previousTool = document.body.dataset.activeTool;
     if (previousTool !== nextTool && previousTool === "poetic") window.poeticFragments?.deactivate?.();
+    if (motionSpecimenEnabled && previousTool !== nextTool && previousTool === "motion") window.motionSpecimen?.deactivate?.();
     document.body.dataset.activeTool = nextTool;
     window.editorialText?.activate(nextTool);
     $$("[data-tool-view]").forEach((view) => {
@@ -1736,6 +1959,9 @@
     } else if (nextTool === "index") {
       document.title = "Image Index — Field/Study";
       window.imageIndex?.activate();
+    } else if (motionSpecimenEnabled && nextTool === "motion") {
+      document.title = "Motion Specimen — Field/Study";
+      window.motionSpecimen?.activate();
     } else {
       document.title = "Foreground Study — Field/Study";
       $("#fileNameHeader").textContent = state.sourceImage
@@ -1754,6 +1980,7 @@
     if (activeTool === "poetic") window.poeticFragments?.reset();
     else if (activeTool === "contour") window.contourLoom?.reset();
     else if (activeTool === "index") window.imageIndex?.reset();
+    else if (motionSpecimenEnabled && activeTool === "motion") window.motionSpecimen?.reset();
     else resetComposition();
   });
   $("#exportButton").addEventListener("click", openExportDialog);
@@ -1769,6 +1996,11 @@
     const controller = activeExportController();
     $("#exportDialog").close();
     controller?.exportPng?.();
+  });
+  $("#exportJpegChoice").addEventListener("click", () => {
+    const controller = activeExportController();
+    $("#exportDialog").close();
+    controller?.exportJpeg?.();
   });
   $("#animatedClipDuration").addEventListener("input", (event) => {
     activeExportController()?.setClipDuration?.(event.target.value);
@@ -1796,13 +2028,20 @@
     panel: "#foregroundEditorialPanel",
     width: 900,
     height: 1200,
+    getDimensions: () => window.outputFormat.logicalDimensions(),
+    projectBounds: (bounds) => window.outputFormat.isReflow() ? bounds : window.outputFormat.projectRect(bounds, 632, 900, 1200),
+    projectGuides: (guides) => window.outputFormat.isReflow() ? guides : window.outputFormat.projectGuides(guides, 632, 900, 1200),
+    unprojectPoint: (point) => window.outputFormat.isReflow() ? point : window.outputFormat.unprojectPoint(point, 632, 900, 1200),
     getLayers: () => {
       const textColor = contrastTextColor(state.background);
+      const panels = window.outputFormat.isReflow() ? window.outputFormat.splitPanels(632, 900, 1200) : null;
+      const upperRect = panels?.[0];
+      const lowerRect = panels?.[1];
       const layers = [
-        { id: "left", label: "Primary editorial text", bounds: copyLayerBounds("left"), enabled: Boolean(state.sourceImage) },
-        { id: "right", label: "Secondary editorial text", bounds: copyLayerBounds("right"), enabled: Boolean(state.sourceImage) },
-        { id: "center", label: "Center tracking line", bounds: copyLayerBounds("center"), enabled: Boolean(state.sourceImage && state.layout === "baseline") },
-        { id: "rail", label: "Photo word rail", bounds: photoRailBounds(), enabled: Boolean(state.sourceImage && state.showPhotoWords) },
+        { id: "left", label: "Primary editorial text", bounds: copyLayerBounds("left", upperRect), enabled: Boolean(state.sourceImage) },
+        { id: "right", label: "Secondary editorial text", bounds: copyLayerBounds("right", upperRect), enabled: Boolean(state.sourceImage) },
+        { id: "center", label: "Center tracking line", bounds: copyLayerBounds("center", upperRect), enabled: Boolean(state.sourceImage && state.layout === "baseline") },
+        { id: "rail", label: "Photo word rail", bounds: photoRailBounds(lowerRect), enabled: Boolean(state.sourceImage && state.showPhotoWords) },
       ];
       return layers.map((layer) => ({
         ...layer,
@@ -1812,9 +2051,13 @@
     },
     updateLayer: (id, patch) => Object.assign(state.textLayers[id], patch),
     resetLayer: (id) => { state.textLayers[id] = defaultTextTransform(); },
-    getAlignment: (layer) => layer.id === "rail"
-      ? { x: 450, y: 916, threshold: 12, region: { x: 0, y: 632, width: 900, height: 568 } }
-      : { x: 450, y: 316, threshold: 12, region: { x: 0, y: 0, width: 900, height: 632 } },
+    getAlignment: (layer) => {
+      const panels = window.outputFormat.isReflow()
+        ? window.outputFormat.splitPanels(632, 900, 1200)
+        : [{ x: 0, y: 0, width: 900, height: 632 }, { x: 0, y: 632, width: 900, height: 568 }];
+      const region = layer.id === "rail" ? panels[1] : panels[0];
+      return { x: region.x + region.width / 2, y: region.y + region.height / 2, threshold: 12, region };
+    },
     render,
   });
 
@@ -1822,4 +2065,12 @@
   syncControls();
   render();
   activateTool("foreground");
+  window.addEventListener("fieldstudy:formatchange", () => {
+    foregroundExportController.refreshFormat();
+    window.poeticFragments?.refreshFormat?.();
+    window.contourLoom?.refreshFormat?.();
+    window.imageIndex?.refreshFormat?.();
+    if (motionSpecimenEnabled) window.motionSpecimen?.refreshFormat?.();
+    if ($("#exportDialog").open) syncExportDialog();
+  });
 })();
