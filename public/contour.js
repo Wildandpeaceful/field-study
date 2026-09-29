@@ -90,7 +90,7 @@
     },
     cells: [],
     bounds: null,
-    outputWidth: 900,
+    outputWidth: window.outputFormat.get().shortEdge,
     dragging: null,
     loadingTexture: false,
     loadingMask: false,
@@ -1567,6 +1567,11 @@
     const swapButton = $("#contourSwapImages");
     swapButton.hidden = !canSwapSources && !state.swappingSources;
     swapButton.disabled = !canSwapSources || state.recording || state.swappingSources;
+    swapButton.title = canSwapSources
+      ? "Exchange the texture and uploaded contour media"
+      : state.maskSource === "lucide"
+        ? "Lucide icon contours cannot be swapped with texture media"
+        : "Add both uploaded media sources to swap their roles";
     swapButton.classList.toggle("working", state.swappingSources);
     $("strong", swapButton).textContent = state.swappingSources ? "Swapping roles" : "Swap image roles";
     $("#contourOpenIconPicker").disabled = state.recording || state.swappingSources || state.loadingMask;
@@ -2328,6 +2333,7 @@
     activate,
     refreshFormat: render,
     reset,
+    hasContent: () => Boolean(state.textureImage || state.maskImage),
     exportPng,
     exportJpeg,
     exportAnimated,
@@ -2347,7 +2353,7 @@
       syncControls();
     },
     setOutputWidth: (width) => {
-      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      state.outputWidth = [900, 1350, 3000].includes(Number(width)) ? Number(width) : 900;
       syncControls();
       render();
     },

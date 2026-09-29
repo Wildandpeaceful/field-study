@@ -17,6 +17,7 @@
   const selection = document.querySelector("#contourGiphySelection");
   const useButton = document.querySelector("#contourGiphyUse");
   const manageKeyButton = document.querySelector("#contourGiphyManageKey");
+  const clearKeyButton = document.querySelector("#contourGiphyClearKey");
   const searchCache = new Map();
 
   let apiKey = readKey();
@@ -61,6 +62,7 @@
     searchButton.disabled = show || searching;
     if (show) {
       keyInput.value = apiKey;
+      clearKeyButton.hidden = !apiKey;
       status.textContent = apiKey ? "Update or replace the saved key" : "A free GIPHY beta key is required";
       if (focus) requestAnimationFrame(() => keyInput.focus());
     } else if (focus) {
@@ -244,6 +246,19 @@
   document.querySelector("#contourGiphyPickerCancel").addEventListener("click", closePicker);
   useButton.addEventListener("click", useSelectedSticker);
   manageKeyButton.addEventListener("click", () => showKeySetup(keySetup.hidden, true));
+  clearKeyButton.addEventListener("click", () => {
+    apiKey = "";
+    try {
+      localStorage.removeItem(API_KEY_STORAGE);
+    } catch (_) {
+      // Storage can be unavailable in a private browser session.
+    }
+    searchCache.clear();
+    keyInput.value = "";
+    clearKeyButton.hidden = true;
+    status.textContent = "Saved key removed from this browser";
+    keyInput.focus();
+  });
   keyForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const value = keyInput.value.trim();

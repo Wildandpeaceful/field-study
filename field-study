@@ -1,0 +1,12 @@
+#!/bin/bash
+set -Eeuo pipefail
+ROOT="$(cd -- "$(dirname -- "$0")" && pwd)"
+if [ "${1:-}" = "update" ]; then
+  shift
+  exec /bin/bash "$ROOT/install.sh" --update "$@"
+fi
+if [ ! -x "$ROOT/.runtime/python/bin/python3" ]; then
+  printf 'Preparing the complete Field/Study download...\n'
+  exec /bin/bash "$ROOT/install.sh" "$@"
+fi
+exec "$ROOT/.runtime/python/bin/python3" -I -B "$ROOT/scripts/launch.py" "$@"

@@ -42,7 +42,7 @@
     palette: ["#ffffff", "#111111", "#747474"],
     paletteTarget: "background",
     subjectSelected: false,
-    outputWidth: 900,
+    outputWidth: window.outputFormat.get().shortEdge,
     seed: 11,
     labelIteration: 0,
     cells: [],
@@ -906,6 +906,7 @@
     activate,
     refreshFormat: render,
     reset,
+    hasContent: () => Boolean(state.sourceImage),
     exportPng,
     exportJpeg,
     getExportOptions: () => ({
@@ -915,7 +916,7 @@
       outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
     }),
     setOutputWidth: (width) => {
-      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      state.outputWidth = [900, 1350, 3000].includes(Number(width)) ? Number(width) : 900;
       render();
     },
   };

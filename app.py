@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -19,13 +20,18 @@ ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
 SWIFT_SOURCE = ROOT / "vision" / "ForegroundExtractor.swift"
 BIN_DIR = ROOT / "work" / "bin"
-EXTRACTOR = BIN_DIR / "foreground-extractor"
+BUNDLED_EXTRACTOR = ROOT / ".runtime" / "foreground-extractor"
+EXTRACTOR = BUNDLED_EXTRACTOR if BUNDLED_EXTRACTOR.exists() else BIN_DIR / "foreground-extractor"
+VERSION = (ROOT / "VERSION").read_text().strip() if (ROOT / "VERSION").exists() else "development"
+INSTALL_ID = hashlib.sha256(str(ROOT).encode()).hexdigest()[:16]
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024
 MAX_EXPORT_BYTES = 24 * 1024 * 1024
 
 
 def compile_extractor() -> None:
     """Compile the small Vision helper when missing or stale."""
+    if EXTRACTOR == BUNDLED_EXTRACTOR:
+        return
     if EXTRACTOR.exists() and EXTRACTOR.stat().st_mtime >= SWIFT_SOURCE.stat().st_mtime:
         return
     BIN_DIR.mkdir(parents=True, exist_ok=True)
@@ -76,7 +82,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if urlparse(self.path).path == "/api/health":
-            self.send_json(200, {"ok": True, "engine": "Apple Vision", "local": True})
+            self.send_json(200, {"ok": True, "app": "field-study", "version": VERSION, "install": INSTALL_ID, "engine": "Apple Vision", "local": True})
             return
         super().do_GET()
 

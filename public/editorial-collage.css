@@ -1,0 +1,29 @@
+#collageCanvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+#collageCanvas:active{cursor:grabbing;}
+.collage-guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;}
+.collage-guide polygon,.collage-guide line{fill:none;stroke:#4b69ff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
+.collage-guide circle,.collage-guide rect{fill:#fff;stroke:#4b69ff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
+.collage-presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.collage-presets button{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:10px;font-size:11px;cursor:pointer;}
+.collage-presets button.selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+.collage-chip{display:block;width:74px;height:65px;position:relative;background:#eeede7;margin:0 auto 9px;overflow:hidden;}
+.collage-chip::before,.collage-chip::after{content:'';position:absolute;background:#8d9c86;}
+.collage-chip.stack::before{width:39px;height:37px;left:27px;top:7px;}.collage-chip.stack::after{width:37px;height:23px;left:6px;top:36px;background:#3c4039;border:2px solid white;transform:rotate(-4deg);}
+.collage-chip b{position:absolute;z-index:2;left:7px;top:3px;color:#d51719;font:900 28px Arial;transform:rotate(90deg);}
+.collage-chip.detail::before{inset:0;background:#6a735b;}.collage-chip.detail::after{width:29px;height:28px;left:34px;top:15px;background:#e3ba64;}
+.collage-layers{display:grid;gap:5px;margin:12px 0;}
+.collage-layers button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--panel);cursor:pointer;min-width:0;}
+.collage-layers button[aria-pressed="true"]{border-color:var(--ink);background:#e8ecd9;box-shadow:inset 0 0 0 1px var(--ink);}
+.collage-layers button i{width:27px;height:27px;display:grid;place-items:center;background:#e5e2d9;font:12px Georgia;flex-shrink:0;font-style:normal;overflow:hidden;}
+.collage-layers img{width:100%;height:100%;object-fit:cover;}
+.collage-layers strong{font-size:11px;display:block;}.collage-layers small{display:block;font-size:9px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:225px;}
+.collage-field{display:grid;gap:7px;font-size:11px;margin:14px 0;}
+.collage-field select,.collage-field textarea{padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);width:100%;min-width:0;}
+.collage-field textarea{resize:vertical;min-height:76px;line-height:1.5;}
+.collage-actions{display:flex;gap:15px;flex-wrap:wrap;margin:12px 0;}
+.collage-note{font-size:11px;line-height:1.5;color:var(--muted);margin:12px 0;}
+.collage-studio .range-row{grid-template-columns:102px minmax(0,1fr) 46px;}
+.collage-studio button:disabled{opacity:.4;cursor:not-allowed;}
+#collageSelectionLabel{display:block;font-size:11px;font-weight:700;margin-bottom:12px;}
+#collageDrop{margin-top:12px;}
+@media(max-width:1180px){#collageModeLabel{display:none;}}

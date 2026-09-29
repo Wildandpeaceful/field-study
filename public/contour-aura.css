@@ -1,0 +1,27 @@
+/* Uses the studio's existing controls and responsive workspace. */
+#auraCanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+#auraCanvas:active { cursor:grabbing; }
+#auraCanvas[data-editing="true"] { cursor:crosshair; }
+.aura-source-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.aura-demo { margin-top:10px; }
+.aura-mask-controls { border-top:1px solid var(--line); margin-top:16px; padding-top:8px; }
+.aura-presets { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:18px; }
+.aura-presets button { background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:10px 5px; font-size:11px; cursor:pointer; }
+.aura-presets button.selected { border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink); }
+.aura-chip { display:block; width:28px; height:28px; margin:0 auto 7px; border:4px solid #fffbed; border-radius:43% 57% 54% 46%; background:#244438; box-shadow:0 0 0 2px #244438; }
+.aura-chip.electric { border-color:#d6ff45; background:#4b69ff; box-shadow:0 0 0 2px #4b69ff; }
+.aura-chip.ink { border:2px solid #171914; background:#eee7d8; box-shadow:0 0 0 2px #eee7d8; }
+.aura-select { display:grid; gap:7px; font-size:11px; margin:14px 0; }
+.aura-select select { padding:9px; border:1px solid var(--line); border-radius:5px; background:var(--panel); width:100%; }
+.aura-empty-mark { display:grid; place-items:center; width:92px; height:98px; position:relative; margin-bottom:22px; }
+.aura-empty-mark i { position:absolute; border:2px solid #5e7863; border-radius:43% 57% 38% 62%; width:90%; height:92%; transform:rotate(-12deg); }
+.aura-empty-mark i:nth-child(2) { width:65%; height:68%; }
+.aura-empty-mark i:nth-child(3) { width:38%; height:43%; background:#d6ff45; }
+.empty-overlay .aura-empty-demo { background:transparent; border:0; color:var(--muted); font-size:11px; margin-top:6px; }
+.aura-studio .small-action:disabled { cursor:not-allowed; opacity:0.45; }
+.aura-studio .range-row { grid-template-columns:108px minmax(0,1fr) 44px; }
+.tool-switcher { flex:0 1 auto; min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.tool-switcher button { flex-shrink:0; }
+@media (min-width:761px) and (max-width:1400px) { .app-header { grid-template-columns:180px minmax(0,1fr) auto; } .header-meta { display:none; } }
+@media (max-width:1050px) { .aura-studio .workspace-toolbar > div { gap:7px; } #auraModeLabel { display:none; } }
+@media (max-width:760px) { .aura-studio .workspace-help { padding-left:14px; padding-right:14px; } }

@@ -1,0 +1,34 @@
+const assert=require('node:assert/strict');
+const E=require('../public/emboss-engine.js');
+const w=40,h=30,alpha=new Uint8ClampedArray(w*h*4);
+for(let y=8;y<22;y++)for(let x=10;x<30;x++)alpha[(y*w+x)*4+3]=255;
+const field=E.heightField(alpha,w,h,0,1);
+const constant=E.blur(new Float32Array(w*h).fill(1),w,h,3);
+assert.ok(constant.every(n=>Math.abs(n-1)<1e-6),'Blur must preserve flat areas and boundaries.');
+assert.ok(field[15*w+20]>.99);assert.equal(field[0],0);
+assert.ok(field[15*w+10]>0&&field[15*w+10]<1,'Letter edges must bevel smoothly.');
+const light=E.lightVector(0);
+const raised=E.reliefAt(field,w,h,10,15,50,1,'emboss',light),recessed=E.reliefAt(field,w,h,10,15,50,1,'deboss',light);
+assert.ok(raised<0&&recessed>0,'Emboss/deboss must reverse the lit edge.');
+assert.equal(E.reliefAt(field,w,h,10,15,0,1,'emboss',light),0,'Zero press depth must remove lettering relief.');
+assert.equal(E.reliefAt(field,w,h,20,15,50,1,'emboss',light),0,'Flat lettering must retain the paper color.');
+assert.ok(E.reliefAt(field,w,h,10,15,50,1,'emboss',E.lightVector(180))>0,'Moving the light must switch edge illumination.');
+const p=E.panel(900,1200,'top',34);assert.equal(p.photo.height,408);assert.equal(p.paper.y,408);assert.equal(p.paper.height,792);
+const wide=E.panel(1600,900,'left',40);assert.equal(wide.photo.width,640);assert.equal(wide.paper.x,640);
+assert.equal(E.panel(900,1200,'none',50).photo,null);
+const cover=E.fittedRect(1600,900,{x:0,y:0,width:900,height:1200});assert.ok(cover.width>=900-1e-8&&cover.height>=1200-1e-8);
+const contain=E.fittedRect(1600,900,{x:0,y:0,width:900,height:1200},100,0,0,'contain');assert.equal(contain.width,900);assert.ok(contain.height<1200);
+const settings={paper:'#70afd1',angle:315,depth:40,strength:80,relief:'deboss',grain:50,wash:60,seed:19};
+const a=new Uint8ClampedArray(w*h*4),b=a.slice();const region={x:0,y:0,width:w,height:h};E.shade(a,w,h,field,settings,region);E.shade(b,w,h,field,settings,region);assert.deepEqual(a,b,'Paper grain must remain stable.');
+const split=new Uint8ClampedArray(w*h*4).fill(77);E.shade(split,w,h,field,settings,{x:0,y:15,width:w,height:15});assert.ok(split.slice(0,w*15*4).every(n=>n===77),'Material must not overwrite the photo panel.');
+assert.ok(a.every((n,i)=>i%4!==3||n===255),'Output must remain opaque.');
+console.log('Embossed Print: bevel field, relief reversal, light direction, flat color, zero depth, panel geometry, photo framing, deterministic texture, and photo isolation passed.');
+
+// A small letter counter should remain open instead of becoming a blurred puddle.
+const tiny=new Uint8ClampedArray(25*25*4);
+for(let y=8;y<=16;y++)for(let x=8;x<=16;x++)if(x<10||x>14||y<10||y>14)tiny[(y*25+x)*4+3]=255;
+const broad=E.heightField(tiny,25,25,80,1),fine=E.heightField(tiny,25,25,80,E.letteringScale(20));
+assert.ok(fine[12*25+12]<broad[12*25+12],'Adaptive bevels must retain small counters.');
+assert.ok(fine[8*25+12]>broad[8*25+12],'Adaptive bevels must retain narrow strokes.');
+assert.equal(E.letteringScale(144),1,'Display type should retain its full press depth.');
+console.log('Small lettering: narrow strokes and open counters preserved.');

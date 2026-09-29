@@ -1,0 +1,28 @@
+#textFieldCanvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+#textFieldCanvas:active{cursor:grabbing;}
+.tf-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 16px;}
+.tf-presets button{border:1px solid var(--line);border-radius:5px;background:var(--paper);padding:8px 4px;font-size:11px;cursor:pointer;}
+.tf-presets button.selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+.tf-chip{display:block;padding:9px 3px;margin-bottom:6px;font:700 8px/1.8 Arial,sans-serif;letter-spacing:2px;color:#f8f6ee;background:#4d6055;height:48px;overflow:hidden;}
+.tf-chip.grid{background:#34372f;letter-spacing:4px;}.tf-chip.verse{font:italic 10px/1.4 Georgia,serif;letter-spacing:0;background:#8e7568;}
+.tf-field{display:grid;gap:7px;font-size:11px;margin:14px 0;}
+.tf-field select,.tf-field textarea{padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);width:100%;min-width:0;}
+.tf-field textarea{resize:vertical;min-height:118px;line-height:1.5;}
+.tf-actions{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0;}
+.tf-studio .range-row{grid-template-columns:114px minmax(0,1fr) 44px;}
+.tf-studio button:disabled{opacity:.45;cursor:not-allowed;}
+.tf-note{font-size:11px;line-height:1.6;color:var(--muted);margin:12px 0;}
+#textFieldLayoutStatus{display:block;font:10px/1.55 ui-monospace,monospace;color:var(--muted);margin:12px 0;}
+.tf-guide{position:absolute;pointer-events:none;border:1px solid #d6ff45;box-shadow:0 0 0 1px #17191466;}
+.tf-guide.zone{border-radius:50%;border-style:dashed;}
+.tf-empty-demo{margin-top:12px!important;background:transparent!important;color:var(--ink)!important;border:0!important;text-decoration:underline;text-underline-offset:4px;}
+#textFieldSelected{overflow-wrap:anywhere;}
+@media(max-width:1180px){#textFieldModeLabel{display:none;}}
+@media(max-width:760px){.tf-studio .workspace-help{padding:0 14px;}}
+.tf-studio .toggle-row input:focus-visible + i{outline:2px solid var(--blue);outline-offset:3px;}
+
+#textFieldVideoSlot{display:contents;}#textFieldVideoSlot[hidden]{display:none;}
+#textFieldPlayback{margin-top:8px;}#textFieldPlayback .tf-speed{margin:8px 0 0;grid-template-columns:70px 1fr;align-items:center;}
+#textFieldPlayback .tf-note{margin:8px 0;font-size:10px;}
+.tf-recording{position:absolute;left:12px;right:12px;bottom:12px;z-index:5;background:#171914ed;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font:11px ui-monospace,monospace;}
+.tf-recording button{background:transparent;color:white;border:1px solid #92978d;padding:7px 10px;cursor:pointer;}

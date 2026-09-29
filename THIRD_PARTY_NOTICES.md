@@ -36,3 +36,15 @@ Field/Study includes the MediaPipe Tasks Vision 1.0.1 browser runtime and the Ma
 - Model: MagicTouch Interactive Segmenter
 - License: Apache License 2.0
 - Vendored license: `public/vendor/mediapipe/LICENSE`
+
+## Python runtime (release ZIP only)
+
+The ready-to-run macOS package contains CPython 3.12.14 from Astral's
+[python-build-standalone release 20260924](https://github.com/astral-sh/python-build-standalone/releases/tag/20260924).
+The build script pins upstream SHA-256 digests. CPython and bundled library license
+texts are included in `.runtime/python/licenses/`, with CPython's own license at
+`.runtime/python/lib/python3.12/LICENSE.txt`. Runtime metadata is in
+`.runtime/python/PYTHON.json`. These components retain their upstream licenses.
+
+The Apple Vision frameworks are supplied by macOS, not redistributed with Field/Study.
+The small compiled foreground helper is built from this repository's MIT-licensed Swift source.

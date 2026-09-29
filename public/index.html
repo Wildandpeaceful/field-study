@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#171914" />
     <title>Field/Study — Local Editorial Image Studio</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=album-canvas-1" />
+    <link rel="stylesheet" href="/contour-aura.css?v=2" />
+    <link rel="stylesheet" href="/frosted-reveal.css?v=1" />
+    <link rel="stylesheet" href="/paper-weave.css?v=1" />
+    <link rel="stylesheet" href="/embossed-print.css?v=1" />
+    <link rel="stylesheet" href="/text-field.css?v=2" />
+    <link rel="stylesheet" href="/editorial-collage.css?v=1" />
   </head>
   <body>
     <header class="app-header">
@@ -17,12 +23,18 @@
         <span>FIELD/STUDY</span>
       </a>
       <div class="header-center">
-        <nav class="tool-switcher" aria-label="Field Study tools">
-          <button type="button" class="selected" data-tool-switch="foreground" aria-pressed="true"><span>01</span> Foreground Study</button>
-          <button type="button" data-tool-switch="poetic" aria-pressed="false"><span>02</span> Poetic Fragments</button>
-          <button type="button" data-tool-switch="contour" aria-pressed="false"><span>03</span> Contour Loom</button>
-          <button type="button" data-tool-switch="index" aria-pressed="false"><span>04</span> Image Index</button>
-          <button type="button" data-tool-switch="motion" data-feature="motion-specimen" aria-pressed="false" hidden><span>05</span> Motion Specimen</button>
+        <nav class="tool-switcher" role="tablist" aria-label="Field Study compositions">
+          <button id="foregroundToolTab" type="button" class="selected" role="tab" data-tool-switch="foreground" aria-controls="studio" aria-selected="true" tabindex="0"><span>01</span> Foreground Study</button>
+          <button id="poeticToolTab" type="button" role="tab" data-tool-switch="poetic" aria-controls="poeticStudio" aria-selected="false" tabindex="-1"><span>02</span> Poetic Fragments</button>
+          <button id="contourToolTab" type="button" role="tab" data-tool-switch="contour" aria-controls="contourStudio" aria-selected="false" tabindex="-1"><span>03</span> Contour Loom</button>
+          <button id="indexToolTab" type="button" role="tab" data-tool-switch="index" aria-controls="imageIndexStudio" aria-selected="false" tabindex="-1"><span>04</span> Image Index</button>
+          <button id="auraToolTab" type="button" role="tab" data-tool-switch="aura" aria-controls="auraStudio" aria-selected="false" tabindex="-1"><span>05</span> Contour Aura</button>
+          <button id="frostToolTab" type="button" role="tab" data-tool-switch="frost" aria-controls="frostStudio" aria-selected="false" tabindex="-1"><span>06</span> Frosted Reveal</button>
+          <button id="weaveToolTab" type="button" role="tab" data-tool-switch="weave" aria-controls="weaveStudio" aria-selected="false" tabindex="-1"><span>07</span> Paper Weave</button>
+          <button id="embossToolTab" type="button" role="tab" data-tool-switch="emboss" aria-controls="embossStudio" aria-selected="false" tabindex="-1"><span>08</span> Embossed Print</button>
+          <button id="textFieldToolTab" type="button" role="tab" data-tool-switch="textField" aria-controls="textFieldStudio" aria-selected="false" tabindex="-1"><span>09</span> Text Field</button>
+          <button id="collageToolTab" type="button" role="tab" data-tool-switch="collage" aria-controls="collageStudio" aria-selected="false" tabindex="-1"><span>10</span> Editorial Collage</button>
+          <button id="motionToolTab" type="button" role="tab" data-tool-switch="motion" data-feature="motion-specimen" aria-controls="motionSpecimenStudio" aria-selected="false" tabindex="-1" hidden><span>11</span> Motion Specimen</button>
         </nav>
         <div class="header-meta" aria-label="Project status">
           <span class="privacy-dot"></span>
@@ -43,7 +55,7 @@
       </div>
     </header>
 
-    <main class="studio" id="studio" data-tool-view="foreground">
+    <main class="studio" id="studio" data-tool-view="foreground" role="tabpanel" aria-labelledby="foregroundToolTab" tabindex="-1">
       <aside class="control-rail" aria-label="Composition controls">
         <div class="rail-intro">
           <p class="eyebrow">COMPOSITION 01</p>
@@ -337,7 +349,7 @@
       </section>
     </main>
 
-    <main class="studio poetic-studio" id="poeticStudio" data-tool-view="poetic" hidden>
+    <main class="studio poetic-studio" id="poeticStudio" data-tool-view="poetic" role="tabpanel" aria-labelledby="poeticToolTab" tabindex="-1" hidden>
       <aside class="control-rail" aria-label="Poetic Fragments controls">
         <div class="rail-intro poetic-intro">
           <p class="eyebrow">COMPOSITION 02</p>
@@ -533,7 +545,7 @@
       </section>
     </main>
 
-    <main class="studio contour-studio" id="contourStudio" data-tool-view="contour" hidden>
+    <main class="studio contour-studio" id="contourStudio" data-tool-view="contour" role="tabpanel" aria-labelledby="contourToolTab" tabindex="-1" hidden>
       <aside class="control-rail" aria-label="Contour Loom controls">
         <div class="rail-intro contour-intro">
           <p class="eyebrow">COMPOSITION 03</p>
@@ -897,7 +909,7 @@
       </section>
     </main>
 
-    <main class="studio image-index-studio" id="imageIndexStudio" data-tool-view="index" hidden>
+    <main class="studio image-index-studio" id="imageIndexStudio" data-tool-view="index" role="tabpanel" aria-labelledby="indexToolTab" tabindex="-1" hidden>
       <aside class="control-rail" aria-label="Image Index controls">
         <div class="rail-intro image-index-intro">
           <p class="eyebrow">COMPOSITION 04</p>
@@ -1044,8 +1056,1212 @@ OBJECT INDEX</textarea></label>
       </section>
     </main>
 
+    <main class="studio aura-studio" id="auraStudio" data-tool-view="aura" role="tabpanel" aria-labelledby="auraToolTab" tabindex="-1" hidden>
+      <aside class="control-rail" aria-label="Contour Aura controls">
+        <div class="rail-intro">
+          <p class="eyebrow">
+            COMPOSITION 05
+          </p>
+          <h1>
+            Contour
+            <br/>
+            Aura
+          </h1>
+          <p>
+            Paint an echo around a person, an object, or a shape. Keep the photograph. Change its energy.
+          </p>
+        </div>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              01
+            </span>
+            <h2>
+              Source
+              &
+              selection
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="drop-zone" id="auraDropZone" for="auraSourceInput">
+              <input id="auraSourceInput" type="file" accept="image/jpeg,image/png,image/webp"/>
+              <span class="drop-idle" id="auraDropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/>
+                </svg>
+                <span>
+                  <strong>
+                    Choose a photograph
+                  </strong>
+                  <small>
+                    or drop here · JPG, PNG, WebP · up to 30 MB
+                  </small>
+                </span>
+              </span>
+              <span class="source-preview" id="auraSourcePreview" hidden>
+                <img id="auraSourceThumb" alt="Contour Aura source"/>
+                <span>
+                  <strong id="auraSourceName">
+                  </strong>
+                  <small id="auraSourceMeta">
+                  </small>
+                </span>
+                <em>
+                  Replace
+                </em>
+              </span>
+            </label>
+            <div class="process-status" id="auraStatus" role="status">
+              <span class="status-light">
+              </span>
+              <span id="auraStatusText">
+                Add a photograph or try the botanical sample.
+              </span>
+            </div>
+            <button class="small-action aura-demo" id="auraDemo" type="button">
+              Try botanical sample
+            </button>
+            <div class="aura-source-actions">
+              <button class="small-action" id="auraAuto" type="button" disabled>
+                Auto-select subject
+              </button>
+              <button class="small-action" id="auraRefine" type="button" disabled>
+                Refine selection
+              </button>
+            </div>
+            <div id="auraMaskControls" class="aura-mask-controls" hidden>
+              <p class="source-mode-note">
+                Green shows the selected subject. Click an object, or paint the area the rings should surround.
+              </p>
+              <div class="segmented-control" role="group" aria-label="Selection tool">
+                <button type="button" data-aura-mode="point">
+                  Pick object
+                </button>
+                <button type="button" data-aura-mode="paint">
+                  Add brush
+                </button>
+                <button type="button" data-aura-mode="erase">
+                  Erase
+                </button>
+              </div>
+              <label class="range-row" for="auraBrush">
+                <span>
+                  Brush size
+                </span>
+                <input id="auraBrush" type="range" min="5" max="140" value="40"/>
+                <output id="auraBrushOutput">
+                  40 px
+                </output>
+              </label>
+              <div class="aura-source-actions">
+                <button type="button" class="small-action" id="auraUndo" disabled>
+                  Undo stroke
+                </button>
+                <button type="button" class="small-action" id="auraClearMask">
+                  Clear selection
+                </button>
+                <button type="button" class="small-action" id="auraDone">
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              02
+            </span>
+            <h2>
+              Painted outlines
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <div class="aura-presets" role="group" aria-label="Aura presets">
+              <button type="button" data-aura-preset="chalk">
+                <i class="aura-chip chalk">
+                </i>
+                Chalk
+              </button>
+              <button type="button" data-aura-preset="electric">
+                <i class="aura-chip electric">
+                </i>
+                Electric
+              </button>
+              <button type="button" data-aura-preset="ink">
+                <i class="aura-chip ink">
+                </i>
+                Ink
+              </button>
+            </div>
+            <label class="range-row" for="auraCount">
+              <span>
+                Rings
+              </span>
+              <input id="auraCount" type="range" min="1" max="8" value="4"/>
+              <output id="auraCountOutput">
+                4
+              </output>
+            </label>
+            <label class="range-row" for="auraSpacing">
+              <span>
+                Space between
+              </span>
+              <input id="auraSpacing" type="range" min="6" max="80" value="26"/>
+              <output id="auraSpacingOutput">
+                26 px
+              </output>
+            </label>
+            <label class="range-row" for="auraThickness">
+              <span>
+                Stroke width
+              </span>
+              <input id="auraThickness" type="range" min="2" max="32" value="10"/>
+              <output id="auraThicknessOutput">
+                10 px
+              </output>
+            </label>
+            <label class="range-row" for="auraGap">
+              <span>
+                First ring offset
+              </span>
+              <input id="auraGap" type="range" min="2" max="60" value="12"/>
+              <output id="auraGapOutput">
+                12 px
+              </output>
+            </label>
+            <label class="range-row" for="auraRoughness">
+              <span>
+                Paint texture
+              </span>
+              <input id="auraRoughness" type="range" min="0" max="100" value="65"/>
+              <output id="auraRoughnessOutput">
+                65%
+              </output>
+            </label>
+            <button class="small-action" id="auraReroll" type="button">
+              New brush variation
+            </button>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              03
+            </span>
+            <h2>
+              Stroke colors
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="toggle-row" for="auraMulticolor">
+              <span>
+                <strong>
+                  Alternating colors
+                </strong>
+                <small>
+                  Cycle through three stroke colors
+                </small>
+              </span>
+              <input id="auraMulticolor" type="checkbox"/>
+              <i aria-hidden="true">
+              </i>
+            </label>
+            <label class="custom-color-row" for="auraColor1">
+              <span>
+                Primary stroke
+              </span>
+              <input id="auraColor1" type="color" value="#fffbed"/>
+              <output id="auraColor1Output">
+                #FFFBED
+              </output>
+            </label>
+            <div id="auraExtraColors" hidden>
+              <label class="custom-color-row" for="auraColor2">
+                <span>
+                  Second stroke
+                </span>
+                <input id="auraColor2" type="color" value="#d6ff45"/>
+                <output id="auraColor2Output">
+                  #D6FF45
+                </output>
+              </label>
+              <label class="custom-color-row" for="auraColor3">
+                <span>
+                  Third stroke
+                </span>
+                <input id="auraColor3" type="color" value="#4b69ff"/>
+                <output id="auraColor3Output">
+                  #4B69FF
+                </output>
+              </label>
+            </div>
+            <p class="source-mode-note">
+              Image colors · click a swatch to set the primary stroke.
+            </p>
+            <div class="universal-swatch-grid" id="auraPalette" aria-label="Aura image colors">
+            </div>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              04
+            </span>
+            <h2>
+              Image
+              &
+              background
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="aura-select" for="auraBackdrop">
+              Background
+              <select id="auraBackdrop">
+                <option value="photo">
+                  Original photograph
+                </option>
+                <option value="solid">
+                  Solid field + cutout
+                </option>
+              </select>
+            </label>
+            <label class="custom-color-row" for="auraBackground">
+              <span>
+                Field color
+              </span>
+              <input id="auraBackground" type="color" value="#213d35"/>
+              <output id="auraBackgroundOutput">
+                #213D35
+              </output>
+            </label>
+            <label class="aura-select" for="auraFit">
+              Photo framing
+              <select id="auraFit">
+                <option value="contain">
+                  Fit whole image
+                </option>
+                <option value="cover">
+                  Fill canvas
+                </option>
+              </select>
+            </label>
+            <label class="range-row" for="auraScale">
+              <span>
+                Image scale
+              </span>
+              <input id="auraScale" type="range" min="40" max="180" value="100"/>
+              <output id="auraScaleOutput">
+                100%
+              </output>
+            </label>
+            <label class="range-row" for="auraDim">
+              <span>
+                Dim background
+              </span>
+              <input id="auraDim" type="range" min="0" max="80" value="0"/>
+              <output id="auraDimOutput">
+                0%
+              </output>
+            </label>
+            <p class="source-mode-note">
+              Drag the artwork to reposition. Arrow keys nudge; Shift moves faster. The photograph and rings stay aligned.
+            </p>
+            <button class="small-action" type="button" id="auraCenter">
+              Center image
+            </button>
+          </div>
+        </details>
+      </aside>
+      <section class="workspace" aria-label="Contour Aura preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status">
+              <i>
+              </i>
+              LIVE COMPOSITION
+            </span>
+            <span id="auraModeLabel">
+              PAINTED OUTLINES
+            </span>
+          </div>
+          <div>
+            <span data-canvas-ratio>
+              3:4
+            </span>
+            <span id="auraDimensions">
+              900 × 1200 PX
+            </span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell aura-artboard-shell" id="auraArtboardShell">
+            <canvas id="auraCanvas" width="900" height="1200" tabindex="0" aria-label="Contour Aura artwork. Drag to reposition; arrow keys nudge. In selection mode, click to select an object or drag to brush." >
+            </canvas>
+            <div class="empty-overlay" id="auraEmpty">
+              <span class="aura-empty-mark" aria-hidden="true">
+                <i>
+                </i>
+                <i>
+                </i>
+                <i>
+                </i>
+              </span>
+              <strong>
+                A little outside the lines.
+              </strong>
+              <p>
+                Start with a photograph. Surround its subject with painted echoes.
+              </p>
+              <button type="button" id="auraEmptyChoose">
+                Choose image
+              </button>
+              <button class="aura-empty-demo" type="button" id="auraEmptyDemo">
+                or try the botanical sample
+              </button>
+            </div>
+            <div class="processing-overlay" id="auraBusy" hidden>
+              <span class="scan-frame">
+                <i>
+                </i>
+              </span>
+              <strong id="auraBusyTitle">
+                Finding the subject
+              </strong>
+              <small>
+                Processing locally on your Mac
+              </small>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help">
+          <span>
+            TIP
+          </span>
+          <span id="auraHelp">
+            Try Chalk for a painted edge, or Electric for a color echo.
+          </span>
+        </p>
+      </section>
+    </main>
     <!-- OPTIONAL FEATURE: Motion Specimen. Controlled by feature-flags.js. -->
-    <main class="studio motion-specimen-studio" id="motionSpecimenStudio" data-tool-view="motion" data-feature="motion-specimen" hidden>
+    <main class="studio frost-studio" id="frostStudio" data-tool-view="frost" role="tabpanel" aria-labelledby="frostToolTab" tabindex="-1" hidden>
+      <aside class="control-rail" aria-label="Frosted Reveal controls">
+        <div class="rail-intro">
+          <p class="eyebrow">
+            COMPOSITION 06
+          </p>
+          <h1>
+            Frosted
+            <br/>
+            Reveal
+          </h1>
+          <p>
+            A soft veil. A clear view. Turn any photograph into a study in what you choose to reveal.
+          </p>
+        </div>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              01
+            </span>
+            <h2>
+              Source photograph
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="drop-zone" id="frostDropZone" for="frostSourceInput">
+              <input id="frostSourceInput" type="file" accept="image/jpeg,image/png,image/webp"/>
+              <span class="drop-idle" id="frostDropIdle">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/>
+                </svg>
+                <span>
+                  <strong>
+                    Choose a photograph
+                  </strong>
+                  <small>
+                    or drop here · JPG, PNG, WebP · up to 30 MB
+                  </small>
+                </span>
+              </span>
+              <span class="source-preview" id="frostSourcePreview" hidden>
+                <img id="frostSourceThumb" alt="Frosted Reveal source"/>
+                <span>
+                  <strong id="frostSourceName">
+                  </strong>
+                  <small id="frostSourceMeta">
+                  </small>
+                </span>
+                <em>
+                  Replace
+                </em>
+              </span>
+            </label>
+            <div class="process-status" id="frostStatus" role="status">
+              <span class="status-light">
+              </span>
+              <span id="frostStatusText">
+                Add a photograph or try the botanical sample.
+              </span>
+            </div>
+            <button class="small-action frost-demo" id="frostDemo" type="button">
+              Try botanical sample
+            </button>
+          </div>
+        </details>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              02
+            </span>
+            <h2>
+              Clear opening
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <div class="frost-modes" role="group" aria-label="Reveal shape">
+              <button type="button" data-frost-shape="circle">
+                <i class="frost-shape-icon circle">
+                </i>
+                Circle
+              </button>
+              <button type="button" data-frost-shape="rectangle">
+                <i class="frost-shape-icon rectangle">
+                </i>
+                Rectangle
+              </button>
+              <button type="button" data-frost-shape="subject">
+                <i class="frost-shape-icon subject">
+                </i>
+                Subject
+              </button>
+              <button type="button" data-frost-shape="brush">
+                <i class="frost-shape-icon brush">
+                </i>
+                Painted
+              </button>
+            </div>
+            <div id="frostShapeControls">
+              <label class="range-row" for="frostWidth">
+                <span>
+                  Opening size
+                </span>
+                <input id="frostWidth" type="range" min="10" max="100" value="60"/>
+                <output id="frostWidthOutput">
+                  60%
+                </output>
+              </label>
+              <div id="frostRectangleControls" hidden>
+                <label class="range-row" for="frostHeight">
+                  <span>
+                    Opening height
+                  </span>
+                  <input id="frostHeight" type="range" min="10" max="100" value="52"/>
+                  <output id="frostHeightOutput">
+                    52%
+                  </output>
+                </label>
+                <label class="range-row" for="frostRotation">
+                  <span>
+                    Rotation
+                  </span>
+                  <input id="frostRotation" type="range" min="-90" max="90" value="-8"/>
+                  <output id="frostRotationOutput">
+                    -8°
+                  </output>
+                </label>
+              </div>
+              <button class="small-action" id="frostCenterWindow" type="button">
+                Center opening
+              </button>
+            </div>
+            <div id="frostSelectionActions" class="frost-actions" hidden>
+              <button type="button" class="small-action" id="frostAuto">
+                Auto-select subject
+              </button>
+              <button type="button" class="small-action" id="frostRefine">
+                Refine reveal
+              </button>
+            </div>
+            <div id="frostMaskControls" class="frost-mask-controls" hidden>
+              <p class="source-mode-note">
+                Green marks the clear area. Pick an object or paint one or more openings.
+              </p>
+              <div class="frost-tools" role="group" aria-label="Reveal brush tool">
+                <button type="button" data-frost-tool="point">
+                  Pick object
+                </button>
+                <button type="button" data-frost-tool="paint">
+                  Add brush
+                </button>
+                <button type="button" data-frost-tool="erase">
+                  Erase
+                </button>
+              </div>
+              <label class="range-row" for="frostBrush">
+                <span>
+                  Brush size
+                </span>
+                <input id="frostBrush" type="range" min="5" max="180" value="65"/>
+                <output id="frostBrushOutput">
+                  65 px
+                </output>
+              </label>
+              <div class="frost-actions">
+                <button type="button" class="small-action" id="frostUndo">
+                  Undo
+                </button>
+                <button type="button" class="small-action" id="frostClear">
+                  Clear reveal
+                </button>
+                <button type="button" class="small-action" id="frostDone">
+                  Done
+                </button>
+              </div>
+            </div>
+            <label class="range-row" for="frostFeather">
+              <span>
+                Edge softness
+              </span>
+              <input id="frostFeather" type="range" min="0" max="60" value="5"/>
+              <output id="frostFeatherOutput">
+                5 px
+              </output>
+            </label>
+            <label class="toggle-row" for="frostInvert">
+              <span>
+                <strong>
+                  Invert reveal
+                </strong>
+                <small>
+                  Frost the opening; keep the rest clear
+                </small>
+              </span>
+              <input id="frostInvert" type="checkbox"/>
+              <i aria-hidden="true">
+              </i>
+            </label>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              03
+            </span>
+            <h2>
+              Frost surface
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <div class="frost-presets" role="group" aria-label="Frost presets">
+              <button type="button" data-frost-preset="glass">
+                <i class="frost-chip glass">
+                </i>
+                Soft glass
+              </button>
+              <button type="button" data-frost-preset="paper">
+                <i class="frost-chip paper">
+                </i>
+                Tracing paper
+              </button>
+              <button type="button" data-frost-preset="mist">
+                <i class="frost-chip mist">
+                </i>
+                Mist
+              </button>
+            </div>
+            <label class="range-row" for="frostBlur">
+              <span>
+                Blur
+              </span>
+              <input id="frostBlur" type="range" min="0" max="60" value="20"/>
+              <output id="frostBlurOutput">
+                20 px
+              </output>
+            </label>
+            <label class="range-row" for="frostVeil">
+              <span>
+                Tint strength
+              </span>
+              <input id="frostVeil" type="range" min="0" max="100" value="38"/>
+              <output id="frostVeilOutput">
+                38%
+              </output>
+            </label>
+            <label class="range-row" for="frostGrain">
+              <span>
+                Grain
+              </span>
+              <input id="frostGrain" type="range" min="0" max="100" value="24"/>
+              <output id="frostGrainOutput">
+                24%
+              </output>
+            </label>
+            <label class="custom-color-row" for="frostTint">
+              <span>
+                Frost tint
+              </span>
+              <input id="frostTint" type="color" value="#edeae2"/>
+              <output id="frostTintOutput">
+                #EDEAE2
+              </output>
+            </label>
+            <button type="button" class="small-action" id="frostReroll">
+              New grain pattern
+            </button>
+            <p class="source-mode-note">
+              Image colors · click a swatch to tint the frost.
+            </p>
+            <div class="universal-swatch-grid" id="frostPalette" aria-label="Frost image colors">
+            </div>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              04
+            </span>
+            <h2>
+              Photo framing
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="frost-select" for="frostFit">
+              Photo framing
+              <select id="frostFit">
+                <option value="cover">
+                  Fill canvas
+                </option>
+                <option value="contain">
+                  Fit whole image
+                </option>
+              </select>
+            </label>
+            <label class="range-row" for="frostScale">
+              <span>
+                Image scale
+              </span>
+              <input id="frostScale" type="range" min="40" max="180" value="100"/>
+              <output id="frostScaleOutput">
+                100%
+              </output>
+            </label>
+            <label class="custom-color-row" for="frostBackground">
+              <span>
+                Canvas field
+              </span>
+              <input id="frostBackground" type="color" value="#243e36"/>
+              <output id="frostBackgroundOutput">
+                #243E36
+              </output>
+            </label>
+            <button type="button" class="small-action frost-move" id="frostMovePhoto" aria-pressed="false">
+              Move photograph
+            </button>
+            <button type="button" class="small-action" id="frostCenterPhoto">
+              Center photograph
+            </button>
+            <p class="source-mode-note">
+              Move photograph lets you drag the image beneath the opening. Subject and painted reveals follow the photograph.
+            </p>
+          </div>
+        </details>
+      </aside>
+      <section class="workspace" aria-label="Frosted Reveal preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status">
+              <i>
+              </i>
+              LIVE COMPOSITION
+            </span>
+            <span id="frostModeLabel">
+              FROSTED GLASS
+            </span>
+          </div>
+          <div>
+            <span data-canvas-ratio>
+              3:4
+            </span>
+            <span id="frostDimensions">
+              900 × 1200 PX
+            </span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell frost-artboard-shell" id="frostArtboardShell">
+            <canvas id="frostCanvas" width="900" height="1200" tabindex="0" aria-label="Frosted Reveal artwork. Drag to move the opening; drag its handle to resize. Arrow keys nudge, plus and minus resize. In refine mode, click to pick an object or drag to paint." >
+            </canvas>
+            <canvas id="frostHandles" width="900" height="1200" aria-hidden="true">
+            </canvas>
+            <div class="empty-overlay" id="frostEmpty">
+              <span class="frost-empty-mark" aria-hidden="true">
+                <i>
+                </i>
+              </span>
+              <strong>
+                Let a little through.
+              </strong>
+              <p>
+                Upload a photograph, soften the surface, and choose what stays clear.
+              </p>
+              <button type="button" id="frostEmptyChoose">
+                Choose image
+              </button>
+              <button class="frost-empty-demo" type="button" id="frostEmptyDemo">
+                or try the botanical sample
+              </button>
+            </div>
+            <div class="processing-overlay" id="frostBusy" hidden>
+              <span class="scan-frame">
+                <i>
+                </i>
+              </span>
+              <strong id="frostBusyTitle">
+                Finding the subject
+              </strong>
+              <small>
+                Processing locally on your Mac
+              </small>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help">
+          <span>
+            TIP
+          </span>
+          <span id="frostHelp">
+            Drag the clear opening · drag its corner to resize.
+          </span>
+        </p>
+      </section>
+    </main>
+
+    <main class="studio weave-studio" id="weaveStudio" data-tool-view="weave" role="tabpanel" aria-labelledby="weaveToolTab" tabindex="-1" hidden>
+      <aside class="control-rail" aria-label="Paper Weave controls">
+        <div class="rail-intro">
+          <p class="eyebrow">
+            COMPOSITION 07
+          </p>
+          <h1>
+            Paper
+            <br/>
+            Weave
+          </h1>
+          <p>
+            Cut, cross, and recompose. Weave a photograph with itself, or let two images share the same surface.
+          </p>
+        </div>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              01
+            </span>
+            <h2>
+              Source photographs
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <p class="weave-source-label">
+              01 / VERTICAL STRIPS
+            </p>
+            <label class="drop-zone" id="weaveDropA" for="weaveInputA">
+              <input id="weaveInputA" type="file" accept="image/jpeg,image/png,image/webp"/>
+              <span class="drop-idle" id="weaveIdleA">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/>
+                </svg>
+                <span>
+                  <strong>
+                    Choose a photograph
+                  </strong>
+                  <small>
+                    JPG, PNG, WebP · up to 30 MB
+                  </small>
+                </span>
+              </span>
+              <span class="source-preview" id="weavePreviewA" hidden>
+                <img id="weaveThumbA" alt="Vertical strip photograph"/>
+                <span>
+                  <strong id="weaveNameA">
+                  </strong>
+                  <small id="weaveMetaA">
+                  </small>
+                </span>
+                <em>
+                  Replace
+                </em>
+              </span>
+            </label>
+            <p class="weave-source-label">
+              02 / HORIZONTAL STRIPS · OPTIONAL
+            </p>
+            <label class="drop-zone" id="weaveDropB" for="weaveInputB">
+              <input id="weaveInputB" type="file" accept="image/jpeg,image/png,image/webp"/>
+              <span class="drop-idle" id="weaveIdleB">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/>
+                </svg>
+                <span>
+                  <strong>
+                    Add a second photograph
+                  </strong>
+                  <small>
+                    Leave empty to weave the first photo with itself
+                  </small>
+                </span>
+              </span>
+              <span class="source-preview" id="weavePreviewB" hidden>
+                <img id="weaveThumbB" alt="Horizontal strip photograph"/>
+                <span>
+                  <strong id="weaveNameB">
+                  </strong>
+                  <small id="weaveMetaB">
+                  </small>
+                </span>
+                <em>
+                  Replace
+                </em>
+              </span>
+            </label>
+            <div class="weave-actions">
+              <button class="small-action" type="button" id="weaveSwap" disabled>
+                Swap photos
+              </button>
+              <button class="small-action" type="button" id="weaveRemoveB" disabled>
+                Remove second
+              </button>
+            </div>
+            <div class="process-status" id="weaveStatus" role="status">
+              <span class="status-light">
+              </span>
+              <span id="weaveStatusText">
+                Add a photograph or try a sample weave.
+              </span>
+            </div>
+            <div class="weave-actions">
+              <button class="small-action" type="button" id="weaveDemo">
+                Botanical sample
+              </button>
+              <button class="small-action" type="button" id="weavePairDemo">
+                Paired sample
+              </button>
+            </div>
+          </div>
+        </details>
+        <details class="control-section" open>
+          <summary class="section-heading">
+            <span>
+              02
+            </span>
+            <h2>
+              Weave structure
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <div class="weave-presets" role="group" aria-label="Weave presets">
+              <button type="button" data-weave-preset="clean">
+                <i class="weave-chip clean">
+                </i>
+                Clean
+              </button>
+              <button type="button" data-weave-preset="handmade">
+                <i class="weave-chip handmade">
+                </i>
+                Handmade
+              </button>
+              <button type="button" data-weave-preset="basket">
+                <i class="weave-chip basket">
+                </i>
+                Basket
+              </button>
+            </div>
+            <label class="weave-select" for="weavePattern">
+              Crossing pattern
+              <select id="weavePattern">
+                <option value="plain">
+                  Plain · over one, under one
+                </option>
+                <option value="basket">
+                  Basket · over two, under two
+                </option>
+                <option value="twill">
+                  Twill · diagonal crossings
+                </option>
+              </select>
+            </label>
+            <label class="range-row" for="weaveStrip">
+              <span>
+                Strip width
+              </span>
+              <input id="weaveStrip" type="range" min="26" max="140" step="1" value="72"/>
+              <output id="weaveStripOutput">
+                72 px
+              </output>
+            </label>
+            <label class="range-row" for="weaveGap">
+              <span>
+                Strip spacing
+              </span>
+              <input id="weaveGap" type="range" min="0" max="30" step="1" value="7"/>
+              <output id="weaveGapOutput">
+                7 px
+              </output>
+            </label>
+            <label class="range-row" for="weaveOffset">
+              <span>
+                Strip offsets
+              </span>
+              <input id="weaveOffset" type="range" min="0" max="36" step="1" value="3"/>
+              <output id="weaveOffsetOutput">
+                3 px
+              </output>
+            </label>
+            <label class="range-row" for="weaveTilt">
+              <span>
+                Strip rotation
+              </span>
+              <input id="weaveTilt" type="range" min="0" max="2" step="0.05" value="0.25"/>
+              <output id="weaveTiltOutput">
+                0.25°
+              </output>
+            </label>
+            <label class="range-row" for="weaveFringe">
+              <span>
+                Loose ends
+              </span>
+              <input id="weaveFringe" type="range" min="0" max="60" step="1" value="16"/>
+              <output id="weaveFringeOutput">
+                16 px
+              </output>
+            </label>
+            <label class="toggle-row" for="weaveFlip">
+              <span>
+                <strong>
+                  Reverse crossings
+                </strong>
+                <small>
+                  Swap which strip passes over
+                </small>
+              </span>
+              <input id="weaveFlip" type="checkbox"/>
+              <i aria-hidden="true">
+              </i>
+            </label>
+            <button class="small-action" id="weaveReroll" type="button">
+              New handmade variation
+            </button>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              03
+            </span>
+            <h2>
+              Paper
+              &
+              light
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="range-row" for="weaveShadow">
+              <span>
+                Paper shadows
+              </span>
+              <input id="weaveShadow" type="range" min="0" max="100" step="1" value="44"/>
+              <output id="weaveShadowOutput">
+                44%
+              </output>
+            </label>
+            <label class="range-row" for="weaveTexture">
+              <span>
+                Paper texture
+              </span>
+              <input id="weaveTexture" type="range" min="0" max="100" step="1" value="22"/>
+              <output id="weaveTextureOutput">
+                22%
+              </output>
+            </label>
+            <label class="range-row" for="weaveMargin">
+              <span>
+                Paper margin
+              </span>
+              <input id="weaveMargin" type="range" min="0" max="18" step="1" value="7"/>
+              <output id="weaveMarginOutput">
+                7%
+              </output>
+            </label>
+            <label class="custom-color-row" for="weaveBackground">
+              <span>
+                Paper color
+              </span>
+              <input id="weaveBackground" type="color" value="#eee7d8"/>
+              <output id="weaveBackgroundOutput">
+                #EEE7D8
+              </output>
+            </label>
+            <p class="source-mode-note">
+              Image colors · click a swatch to set the paper color.
+            </p>
+            <div class="universal-swatch-grid" id="weavePalette" aria-label="Paper colors from your images">
+            </div>
+          </div>
+        </details>
+        <details class="control-section" >
+          <summary class="section-heading">
+            <span>
+              04
+            </span>
+            <h2>
+              Photo framing
+            </h2>
+            <i class="section-chevron" aria-hidden="true">
+            </i>
+          </summary>
+          <div class="section-body">
+            <label class="weave-select" for="weaveActiveImage">
+              Adjust photograph
+              <select id="weaveActiveImage">
+                <option value="a">
+                  First photo · vertical strips
+                </option>
+                <option value="b" disabled>
+                  Second photo · horizontal strips
+                </option>
+              </select>
+            </label>
+            <label class="weave-select" for="weaveFit">
+              Photo framing
+              <select id="weaveFit">
+                <option value="cover">
+                  Fill woven area
+                </option>
+                <option value="contain">
+                  Fit whole photograph
+                </option>
+              </select>
+            </label>
+            <label class="range-row" for="weaveZoom">
+              <span>
+                Photo zoom
+              </span>
+              <input id="weaveZoom" type="range" min="40" max="200" step="1" value="100"/>
+              <output id="weaveZoomOutput">
+                100%
+              </output>
+            </label>
+            <button class="small-action" id="weaveCenter" type="button" disabled>
+              Center selected photo
+            </button>
+            <p class="source-mode-note">
+              Drag the artwork to move the selected photograph within its strips. Arrow keys nudge; Shift moves faster. With one photo, both directions stay aligned.
+            </p>
+          </div>
+        </details>
+      </aside>
+      <section class="workspace" aria-label="Paper Weave preview">
+        <div class="workspace-toolbar">
+          <div>
+            <span class="workspace-status">
+              <i>
+              </i>
+              LIVE COMPOSITION
+            </span>
+            <span id="weaveModeLabel">
+              PAPER WEAVE
+            </span>
+          </div>
+          <div>
+            <span data-canvas-ratio>
+              3:4
+            </span>
+            <span id="weaveDimensions">
+              900 × 1200 PX
+            </span>
+          </div>
+        </div>
+        <div class="artboard-stage">
+          <div class="artboard-shell" id="weaveArtboardShell">
+            <canvas id="weaveCanvas" width="900" height="1200" tabindex="0" aria-label="Paper Weave artwork. Drag to reframe the selected photograph. Arrow keys nudge; Shift moves faster." >
+            </canvas>
+            <div class="empty-overlay" id="weaveEmpty">
+              <span class="weave-empty-mark" aria-hidden="true">
+              </span>
+              <strong>
+                Two directions. One image.
+              </strong>
+              <p>
+                Turn a photograph into woven paper. Add another to make the crossings a conversation.
+              </p>
+              <button type="button" id="weaveEmptyChoose">
+                Choose image
+              </button>
+              <button class="weave-empty-demo" type="button" id="weaveEmptyDemo">
+                or try a sample weave
+              </button>
+            </div>
+            <div class="processing-overlay" id="weaveBusy" hidden>
+              <span class="scan-frame">
+                <i>
+                </i>
+              </span>
+              <strong>
+                Opening your photograph
+              </strong>
+              <small>
+                Processing locally on your Mac
+              </small>
+            </div>
+          </div>
+        </div>
+        <p class="workspace-help">
+          <span>
+            TIP
+          </span>
+          <span id="weaveHelp">
+            Try a sample, then change the strip width and crossing pattern.
+          </span>
+        </p>
+      </section>
+    </main>
+
+<main class="studio emboss-studio" id="embossStudio" data-tool-view="emboss" role="tabpanel" aria-labelledby="embossToolTab" tabindex="-1" hidden><aside class="control-rail" aria-label="Embossed Print controls"><div class="rail-intro"><p class="eyebrow">COMPOSITION 08</p><h1>Embossed<br/>Print</h1><p>Press words into paper. Shape the light, feel the grain, and give your photograph a printed finish.</p></div><details class="control-section" open ><summary class="section-heading"><span>01</span><h2>Print style</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><div class="emboss-presets" role="group" aria-label="Print presets">
+<button type="button" data-emboss-preset="blue"><i class="emboss-chip blue" aria-hidden="true">Aa</i>Blue book</button>
+<button type="button" data-emboss-preset="red"><i class="emboss-chip red" aria-hidden="true">Aa</i>Red sleeve</button>
+<button type="button" data-emboss-preset="natural"><i class="emboss-chip natural" aria-hidden="true">Aa</i>Natural paper</button></div><label class="emboss-field" for="embossRelief"><span>Lettering</span><select id="embossRelief"><option value="deboss">Deboss · pressed into paper</option><option value="emboss">Emboss · raised from paper</option></select></label><p class="source-mode-note">Uninked lettering takes its color from the paper. Light reveals the edges.</p></div></details><details class="control-section" open ><summary class="section-heading"><span>02</span><h2>Lettering</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><div class="emboss-layer-tabs" role="group" aria-label="Text blocks"><button type="button" data-emboss-layer="title">Title</button><button type="button" data-emboss-layer="subtitle">Subtitle</button><button type="button" data-emboss-layer="footer">Edition</button></div><label class="emboss-field" for="embossText"><span id="embossTextLabel">Title text</span><textarea id="embossText" rows="3" maxlength="400" spellcheck="false">AFTERLIGHT</textarea></label><label class="emboss-field" for="embossFont"><span>Typeface</span><select id="embossFont"><option value="serif">Book serif</option><option value="sans">Modern sans</option><option value="bold">Heavy grotesk</option><option value="mono">Monospace</option></select></label><label class="range-row" for="embossSize"><span>Type size</span><input id="embossSize" type="range" min="12" max="180" step="1" value="73"/><output id="embossSizeOutput">73 px</output></label><label class="range-row" for="embossTracking"><span>Letter spacing</span><input id="embossTracking" type="range" min="-5" max="18" step="0.5" value="7"/><output id="embossTrackingOutput">7 px</output></label><label class="range-row" for="embossLeading"><span>Line spacing</span><input id="embossLeading" type="range" min="80" max="170" step="5" value="125"/><output id="embossLeadingOutput">125%</output></label><label class="emboss-field" for="embossAlign"><span>Text alignment</span><select id="embossAlign"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select></label><button class="small-action" type="button" id="embossTextCenter">Center text horizontally</button><p class="source-mode-note">Click and drag any text block on the artwork. Leave a block empty to hide it. Long lines fit within the paper.</p></div></details><details class="control-section"  ><summary class="section-heading"><span>03</span><h2>Paper & light</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="range-row" for="embossDepth"><span>Press depth</span><input id="embossDepth" type="range" min="0" max="100" step="1" value="42"/><output id="embossDepthOutput">42%</output></label><label class="range-row" for="embossBevel"><span>Edge softness</span><input id="embossBevel" type="range" min="0" max="100" step="1" value="45"/><output id="embossBevelOutput">45%</output></label><label class="range-row" for="embossStrength"><span>Relief contrast</span><input id="embossStrength" type="range" min="0" max="100" step="1" value="80"/><output id="embossStrengthOutput">80%</output></label><label class="range-row" for="embossAngle"><span>Light direction</span><input id="embossAngle" type="range" min="0" max="360" step="1" value="315"/><output id="embossAngleOutput">315°</output></label><label class="range-row" for="embossWash"><span>Light across paper</span><input id="embossWash" type="range" min="0" max="100" step="1" value="65"/><output id="embossWashOutput">65%</output></label><label class="range-row" for="embossGrain"><span>Paper texture</span><input id="embossGrain" type="range" min="0" max="100" step="1" value="65"/><output id="embossGrainOutput">65%</output></label><label class="custom-color-row" for="embossPaper"><span>Paper color</span><input id="embossPaper" type="color" value="#70afd1"/><output id="embossPaperOutput">#70AFD1</output></label><div class="universal-swatch-grid" id="embossPalette" aria-label="Paper colors from your photograph"></div><button class="small-action" type="button" id="embossReroll">New paper texture</button></div></details><details class="control-section"  id=embossPhotoSection><summary class="section-heading"><span>04</span><h2>Photograph · optional</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="drop-zone" id="embossDrop" for="embossInput"><input id="embossInput" type="file" accept="image/jpeg,image/png,image/webp"/><span class="drop-idle" id="embossSourceIdle"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/></svg><span><strong>Add a photograph</strong><small>Optional · JPG, PNG, WebP · up to 30 MB</small></span></span><span class="source-preview" id="embossSourcePreview" hidden><img id="embossThumb" alt="Print photograph"/><span><strong id="embossSourceName"></strong><small id="embossSourceMeta"></small></span><em>Replace</em></span></label>
+<div class="emboss-actions"><button class="small-action" type="button" id="embossDemo">Botanical sample</button><button class="small-action" type="button" id="embossRemove" disabled>Remove photo</button></div>
+<div class="process-status ready" id="embossStatus" role="status"><span class="status-light"></span><span id="embossStatusText">Start with paper and type, or add a photograph.</span></div><label class="emboss-field" for="embossLayout"><span>Photo panel</span><select id="embossLayout"><option value="none">Paper only</option><option value="top">Photograph above</option><option value="bottom">Photograph below</option><option value="left">Photograph on the left</option></select></label><label class="range-row" for="embossSplit"><span>Panel size</span><input id="embossSplit" type="range" min="15" max="65" step="1" value="34"/><output id="embossSplitOutput">34%</output></label><label class="emboss-field" for="embossMove"><span>Canvas selection</span><select id="embossMove"><option value="type">Move lettering</option><option value="photo">Move photograph</option></select></label><label class="emboss-field" for="embossPhotoFit"><span>Photo framing</span><select id="embossPhotoFit"><option value="cover">Fill panel</option><option value="contain">Fit whole photograph</option></select></label><label class="range-row" for="embossPhotoZoom"><span>Photo zoom</span><input id="embossPhotoZoom" type="range" min="40" max="300" step="1" value="100"/><output id="embossPhotoZoomOutput">100%</output></label><label class="range-row" for="embossPhotoMono"><span>Black & white</span><input id="embossPhotoMono" type="range" min="0" max="100" step="1" value="0"/><output id="embossPhotoMonoOutput">0%</output></label><label class="range-row" for="embossPhotoContrast"><span>Photo contrast</span><input id="embossPhotoContrast" type="range" min="0" max="80" step="1" value="0"/><output id="embossPhotoContrastOutput">0%</output></label><label class="range-row" for="embossPhotoGrain"><span>Photo grain</span><input id="embossPhotoGrain" type="range" min="0" max="100" step="1" value="28"/><output id="embossPhotoGrainOutput">28%</output></label><button class="small-action" type="button" id="embossPhotoCenter">Center photograph</button><p class="source-mode-note">Drag the photograph directly to find the crop. Canvas selection also lets you choose a layer for keyboard nudging.</p></div></details></aside><section class="workspace" aria-label="Embossed Print preview"><div class="workspace-toolbar"><div><span class="workspace-status"><i></i> LIVE COMPOSITION</span><span id="embossModeLabel">RECESSED LETTERING</span></div><div><span data-canvas-ratio>3:4</span><span id="embossDimensions">900 × 1200 PX</span></div></div><div class="artboard-stage"><div class="artboard-shell" id="embossArtboardShell"><canvas id="embossCanvas" width="900" height="1200" tabindex="0" aria-label="Embossed Print artwork. Drag text to position it or drag the photograph to reframe. Arrow keys nudge the selected layer; Shift moves faster."></canvas><div id="embossSelection" class="emboss-selection" aria-hidden="true" hidden></div><div class="processing-overlay" id="embossBusy" hidden><span class="scan-frame"><i></i></span><strong>Opening your photograph</strong><small>Processing locally on your Mac</small></div></div></div><p class="workspace-help"><span>TIP</span><span id="embossHelp">Click a text block to select it, then drag to position.</span></p></section></main>
+
+<main class="studio tf-studio" id="textFieldStudio" data-tool-view="textField" role="tabpanel" aria-labelledby="textFieldToolTab" tabindex="-1" hidden><aside class="control-rail" aria-label="Text Field controls"><div class="rail-intro"><p class="eyebrow">COMPOSITION 09</p><h1>Text Field</h1><p>Let your words inhabit a photograph or moving image. Scatter a verse, repeat a thought, leave room to breathe.</p></div><details class="control-section" open><summary class="section-heading"><span>01</span><h2>Source media</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="drop-zone" id="textFieldDrop" for="textFieldInput"><input id="textFieldInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov,.m4v"/><span class="drop-idle" id="textFieldIdle"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/></svg><span><strong>Choose image or video</strong><small>Images ≤ 30 MB · videos ≤ 250 MB · stays local</small></span></span><span class="source-preview" id="textFieldPreview" hidden><img id="textFieldThumb" alt="Text Field source image"/><span id="textFieldVideoSlot" hidden></span><span><strong id="textFieldSourceName"></strong><small id="textFieldSourceMeta"></small></span><em>Replace</em></span></label><div id="textFieldPlayback" hidden><div class="video-playback"><button class="video-play-toggle" id="textFieldPlay" type="button" aria-pressed="false"><i aria-hidden="true"></i><span>Play</span></button><label for="textFieldPlayhead"><span class="sr-only">Video playhead</span><input id="textFieldPlayhead" type="range" min="0" max="1" step="0.01" value="0"/></label><output id="textFieldTime">00:00 / 00:00</output><button class="video-sound-toggle" id="textFieldSound" type="button" aria-pressed="false" aria-label="Turn video sound on"><svg aria-hidden="true" viewBox="0 0 24 24"><path class="speaker" d="M4 10v4h4l5 4V6L8 10H4Z"/><path class="sound-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute-mark" d="m17 10 4 4m0-4-4 4"/></svg></button></div><label class="tf-field tf-speed" for="textFieldSpeed"><span>Playback speed</span><select id="textFieldSpeed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><p class="tf-note" id="textFieldVideoNote">Loops locally. Words and the clear area stay fixed in the frame. Export a still frame or a 3–60 second video.</p></div>
+<div class="tf-actions"><button type="button" class="small-action" id="textFieldDemo">Botanical sample</button><button type="button" class="small-action" id="textFieldRemove">Remove source</button></div><div class="process-status" id="textFieldStatus" role="status"><span class="status-light"></span><span id="textFieldStatusText">Add an image or video, or try the sample.</span></div></div></details><details class="control-section" open><summary class="section-heading"><span>02</span><h2>Your words</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="tf-field" for="textFieldText"><span>Your words</span><textarea id="textFieldText" rows="5" maxlength="6000" placeholder="Paste your lyrics, a poem, or a few words…"></textarea></label><label class="tf-field" for="textFieldUnit"><span>Break text into</span><select id="textFieldUnit"><option value="word">Individual words</option><option value="line">One phrase per line</option></select></label><label class="toggle-row" for="textFieldRepeat"><span><strong>Repeat to fill the frame</strong><small>Cycles your text in reading order.</small></span><input id="textFieldRepeat" type="checkbox"/><i aria-hidden="true"></i></label><output id="textFieldLayoutStatus" aria-live="polite"></output><p class="tf-note">Words flow left to right, then down. A clear area skips placements without dropping words.</p></div></details><details class="control-section" open><summary class="section-heading"><span>03</span><h2>Arrangement</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><div class="tf-presets" role="group" aria-label="Text Field layouts"><button type="button" data-tf-preset="scatter"><span class="tf-chip" aria-hidden="true">a &nbsp; little<br/>of &nbsp; everything</span>Scatter</button><button type="button" data-tf-preset="grid"><span class="tf-chip grid" aria-hidden="true">a b c d<br/>e f g h</span>Grid</button><button type="button" data-tf-preset="verse"><span class="tf-chip verse" aria-hidden="true">between the lines<br/>a little room to breathe</span>Verse</button></div><label class="range-row" for="textFieldColumns"><span>Columns</span><input id="textFieldColumns" type="range" min="2" max="14" step="1" value="8"/><output id="textFieldColumnsOutput">8</output></label><label class="range-row" for="textFieldSize"><span>Type size</span><input id="textFieldSize" type="range" min="12" max="48" step="1" value="22"/><output id="textFieldSizeOutput">22 px</output></label><label class="range-row" for="textFieldRowGap"><span>Row spacing</span><input id="textFieldRowGap" type="range" min="140" max="450" step="1" value="205"/><output id="textFieldRowGapOutput">205%</output></label><label class="range-row" for="textFieldDensity"><span>Fill density</span><input id="textFieldDensity" type="range" min="15" max="100" step="1" value="87"/><output id="textFieldDensityOutput">87%</output></label><label class="range-row" for="textFieldJitter"><span>Scatter</span><input id="textFieldJitter" type="range" min="0" max="100" step="1" value="78"/><output id="textFieldJitterOutput">78%</output></label><label class="range-row" for="textFieldMargin"><span>Edge margin</span><input id="textFieldMargin" type="range" min="2" max="15" step="1" value="4"/><output id="textFieldMarginOutput">4%</output></label><div class="tf-actions"><button type="button" class="small-action" id="textFieldReroll">Shuffle spacing</button><button type="button" class="small-action" id="textFieldResetWords">Reset word positions</button></div><p class="tf-note">Drag any word to fine-tune its position. Layout changes reset manual word positions; colors and photo framing keep them.</p></div></details><details class="control-section" ><summary class="section-heading"><span>04</span><h2>Type & treatment</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="tf-field" for="textFieldFont"><span>Typeface</span><select id="textFieldFont"><option value="sans">Bold sans</option><option value="serif">Book serif</option><option value="mono">Monospace</option></select></label><label class="tf-field" for="textFieldInk"><span>Text color</span><select id="textFieldInk"><option value="white">White</option><option value="black">Black</option><option value="auto">Auto · light or dark per word</option><option value="custom">Custom color</option></select></label><label class="custom-color-row" for="textFieldColor"><span>Custom ink</span><input id="textFieldColor" type="color" value="#d6ff45"/><output id="textFieldColorOutput">#D6FF45</output></label><label class="range-row" for="textFieldOpacity"><span>Text opacity</span><input id="textFieldOpacity" type="range" min="15" max="100" step="1" value="100"/><output id="textFieldOpacityOutput">100%</output></label><label class="range-row" for="textFieldDim"><span>Darken source</span><input id="textFieldDim" type="range" min="0" max="75" step="1" value="10"/><output id="textFieldDimOutput">10%</output></label><label class="range-row" for="textFieldMono"><span>Black & white</span><input id="textFieldMono" type="range" min="0" max="100" step="1" value="0"/><output id="textFieldMonoOutput">0%</output></label><label class="range-row" for="textFieldGrain"><span>Grain</span><input id="textFieldGrain" type="range" min="0" max="60" step="1" value="10"/><output id="textFieldGrainOutput">10%</output></label></div></details><details class="control-section" ><summary class="section-heading"><span>05</span><h2>Placement & clear area</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="tf-field" for="textFieldMove"><span>Canvas selection</span><select id="textFieldMove"><option value="word">Move a word</option><option value="photo">Move image / video</option><option value="clear">Move clear area</option></select></label><p class="tf-note" id="textFieldSelected">Click any word to select it.</p><div class="tf-actions"><button type="button" class="small-action" id="textFieldPrevious">Previous word</button><button type="button" class="small-action" id="textFieldNext">Next word</button></div><label class="tf-field" for="textFieldFit"><span>Source framing</span><select id="textFieldFit"><option value="cover">Fill canvas</option><option value="contain">Fit whole source</option></select></label><label class="range-row" for="textFieldZoom"><span>Source zoom</span><input id="textFieldZoom" type="range" min="40" max="300" step="1" value="100"/><output id="textFieldZoomOutput">100%</output></label><div class="tf-actions"><button type="button" class="small-action" id="textFieldCenterPhoto">Center source</button></div><label class="toggle-row" for="textFieldClear"><span><strong>Keep an area clear</strong><small>Move the oval over a face or focal point.</small></span><input id="textFieldClear" type="checkbox"/><i aria-hidden="true"></i></label><div id="textFieldClearControls"><label class="range-row" for="textFieldClearWidth"><span>Clear area width</span><input id="textFieldClearWidth" type="range" min="10" max="80" step="1" value="32"/><output id="textFieldClearWidthOutput">32%</output></label><label class="range-row" for="textFieldClearHeight"><span>Clear area height</span><input id="textFieldClearHeight" type="range" min="10" max="80" step="1" value="28"/><output id="textFieldClearHeightOutput">28%</output></label><div class="tf-actions"><button type="button" class="small-action" id="textFieldMoveClear">Position clear area</button><button type="button" class="small-action" id="textFieldCenterClear">Center clear area</button></div></div><p class="tf-note">Arrow keys nudge the selected word, source, or clear area. Hold Shift for larger steps. Guides never export.</p></div></details></aside><section class="workspace" aria-label="Text Field preview"><div class="workspace-toolbar"><div><span class="workspace-status"><i></i> LIVE COMPOSITION</span><span id="textFieldModeLabel">WORDS IN THE FRAME</span></div><div><span data-canvas-ratio>3:4</span><span id="textFieldDimensions">900 × 1200 PX</span></div></div><div class="artboard-stage"><div class="artboard-shell" id="textFieldArtboardShell"><canvas id="textFieldCanvas" width="900" height="1200" tabindex="0" aria-label="Text Field artwork. Drag a word to position it. Select source or clear area in Placement to move those layers. Arrow keys nudge; Shift moves faster."></canvas><div class="tf-guide" id="textFieldGuide" aria-hidden="true" hidden></div><div class="empty-overlay" id="textFieldEmpty"><strong>Still or moving.<br/>A thousand little thoughts.</strong><p>Bring your words and an image or video.<br/>Find a rhythm in the space between them.</p><button type="button" id="textFieldEmptyChoose">Choose image or video</button><button class="tf-empty-demo" type="button" id="textFieldEmptyDemo">or try the botanical sample</button></div><div class="tf-recording" id="textFieldRecording" hidden><span role="status" id="textFieldRecordingStatus">Recording…</span><button type="button" id="textFieldCancelRecording">Cancel</button></div><div class="processing-overlay" id="textFieldBusy" hidden><span class="scan-frame"><i></i></span><strong>Opening your media</strong><small>Processing locally on your Mac</small></div></div></div><p class="workspace-help"><span>TIP</span><span id="textFieldHelp">Add an image or video, then replace the sample words with your own.</span></p></section></main>
+
+<main class="studio collage-studio" id="collageStudio" data-tool-view="collage" role="tabpanel" aria-labelledby="collageToolTab" tabindex="-1" hidden>
+<aside class="control-rail" aria-label="Editorial Collage controls"><div class="rail-intro"><p class="eyebrow">COMPOSITION 10</p><h1>Editorial<br/>Collage</h1><p>Compose a record sleeve. Layer photographs, play with scale, and let the type become part of the image.</p></div><details class="control-section" open><summary class="section-heading"><span>01</span><h2>Cover layout</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><div class="collage-presets" role="group" aria-label="Collage presets"><button type="button" data-collage-preset="stack"><span class="collage-chip stack" aria-hidden="true"><b>a</b></span>Cover Stack</button><button type="button" data-collage-preset="detail"><span class="collage-chip detail" aria-hidden="true"></span>Detail Overlay</button></div><div class="collage-actions"><button class="small-action" type="button" id="collageDemo">Try botanical study</button><button class="small-action" type="button" id="collageAlbum">3000 × 3000 canvas</button></div><p class="collage-note">Presets keep your photos and words. They reset placement, styling, and layer order.</p><div class="process-status ready" id="collageStatus" role="status"><span class="status-light"></span><span id="collageStatusText">Choose a photo layer below and add your image.</span></div></div></details><details class="control-section" open><summary class="section-heading"><span>02</span><h2>Layers</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><p class="collage-note">Front to back. Select a layer here or click it on the cover.</p><div class="collage-layers" id="collageLayers" role="group" aria-label="Collage layers, front to back"></div><div class="collage-actions"><button class="small-action" type="button" id="collageForward">Bring forward</button><button class="small-action" type="button" id="collageBackward">Send backward</button></div><label class="toggle-row" for="collageVisible"><span><strong>Show selected layer</strong><small>Hide a photo or text block without removing it.</small></span><input id="collageVisible" type="checkbox" checked/><i aria-hidden="true"></i></label></div></details><details class="control-section" open><summary class="section-heading"><span>03</span><h2>Selected layer</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><fieldset id="collageEditor" style="border:0;padding:0;margin:0;min-width:0"><legend class="sr-only">Selected layer settings</legend><span id="collageSelectionLabel">Main photo</span><div id="collagePhotoControls"><label class="drop-zone" id="collageDrop" for="collageInput"><input id="collageInput" type="file" accept="image/jpeg,image/png,image/webp"/><span class="drop-idle" id="collageSourceIdle"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v5h16v-5"/></svg><span><strong>Choose a photograph</strong><small>or drop it here · JPG, PNG, WebP</small></span></span><span class="source-preview" id="collageSourcePreview" hidden><img id="collageThumb" alt="Selected collage photo"/><span><strong id="collageSourceName"></strong><small id="collageSourceMeta"></small></span><em>Replace</em></span></label><div class="collage-actions"><button class="small-action" type="button" id="collageRemove">Remove photo</button></div><label class="collage-field" for="collageMove"><span>Drag behavior</span><select id="collageMove"><option value="frame">Move the frame</option><option value="crop">Reframe the photo inside</option></select></label><label class="range-row" for="collageWidth"><span>Frame width</span><input id="collageWidth" type="range" min="5" max="160" step="1" value="63"/><output id="collageWidthOutput">63%</output></label><label class="range-row" for="collageHeight"><span>Frame height</span><input id="collageHeight" type="range" min="5" max="160" step="1" value="60"/><output id="collageHeightOutput">60%</output></label><label class="collage-field" for="collageFit"><span>Photo framing</span><select id="collageFit"><option value="cover">Fill frame</option><option value="contain">Fit whole photograph</option></select></label><label class="range-row" for="collageZoom"><span>Photo zoom</span><input id="collageZoom" type="range" min="100" max="400" step="1" value="100"/><output id="collageZoomOutput">100%</output></label><label class="range-row" for="collageMono"><span>Black & white</span><input id="collageMono" type="range" min="0" max="100" step="1" value="0"/><output id="collageMonoOutput">0%</output></label><label class="range-row" for="collageBorder"><span>Paper border</span><input id="collageBorder" type="range" min="0" max="30" step="1" value="0"/><output id="collageBorderOutput">0 px</output></label><label class="range-row" for="collageShadow"><span>Shadow</span><input id="collageShadow" type="range" min="0" max="60" step="1" value="0"/><output id="collageShadowOutput">0%</output></label><button type="button" class="small-action" id="collageCenterCrop">Reset photo crop</button></div><div id="collageTextControls" hidden><label class="collage-field" for="collageText"><span id="collageTextLabel">Album title</span><textarea id="collageText" rows="3" maxlength="500"></textarea></label><label class="collage-field" for="collageFont"><span>Typeface</span><select id="collageFont"><option value="bold">Heavy grotesk</option><option value="serif">Book serif</option><option value="sans">Modern sans</option><option value="mono">Monospace</option></select></label><label class="range-row" for="collageSize"><span>Type size</span><input id="collageSize" type="range" min="12" max="360" step="1" value="185"/><output id="collageSizeOutput">185 px</output></label><label class="range-row" for="collageTracking"><span>Letter spacing</span><input id="collageTracking" type="range" min="-12" max="30" step="1" value="-5"/><output id="collageTrackingOutput">-5 px</output></label><label class="range-row" for="collageLeading"><span>Line spacing</span><input id="collageLeading" type="range" min="70" max="170" step="1" value="90"/><output id="collageLeadingOutput">90%</output></label><label class="collage-field" for="collageAlign"><span>Text alignment</span><select id="collageAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label><label class="custom-color-row" for="collageInk"><span>Text color</span><input id="collageInk" type="color" value="#d51719"/><output id="collageInkOutput">#D51719</output></label></div><label class="range-row" for="collageRotation"><span>Rotation</span><input id="collageRotation" type="range" min="-180" max="180" step="1" value="0"/><output id="collageRotationOutput">0°</output></label><label class="range-row" for="collageOpacity"><span>Layer opacity</span><input id="collageOpacity" type="range" min="0" max="100" step="1" value="100"/><output id="collageOpacityOutput">100%</output></label><div class="collage-actions"><button type="button" class="small-action" id="collageCenter">Center layer</button><button type="button" class="small-action" id="collageStraighten">Straighten</button></div><p class="collage-note">Drag the square handle to scale; the round handle rotates. Arrow keys nudge. Hold Shift for larger steps or 15° rotation snaps.</p></fieldset></div></details><details class="control-section" ><summary class="section-heading"><span>04</span><h2>Paper & finish</h2><i class="section-chevron" aria-hidden="true"></i></summary><div class="section-body"><label class="custom-color-row" for="collageBackground"><span>Paper color</span><input id="collageBackground" type="color" value="#f1f0eb"/><output id="collageBackgroundOutput">#F1F0EB</output></label><label class="range-row" for="collageMargin"><span>Canvas margin</span><input id="collageMargin" type="range" min="0" max="20" step="1" value="7"/><output id="collageMarginOutput">7%</output></label><label class="range-row" for="collageGrain"><span>Print texture</span><input id="collageGrain" type="range" min="0" max="60" step="1" value="14"/><output id="collageGrainOutput">14%</output></label><p class="collage-note">Margin insets the whole composition. Use Canvas in the header for other aspect ratios and export sizes.</p></div></details></aside><section class="workspace" aria-label="Editorial Collage preview"><div class="workspace-toolbar"><div><span class="workspace-status"><i></i> LIVE COMPOSITION</span><span id="collageModeLabel">COVER STACK</span></div><div><span data-canvas-ratio>1:1</span><span id="collageDimensions">3000 × 3000 PX</span></div></div><div class="artboard-stage"><div class="artboard-shell" id="collageArtboardShell"><canvas id="collageCanvas" width="900" height="900" tabindex="0" aria-label="Editorial Collage artwork. Select and drag a layer. Square handle resizes, round handle rotates. Arrow keys nudge; Shift moves faster."></canvas><svg id="collageGuide" class="collage-guide" aria-hidden="true" hidden><polygon/><line/><rect width="12" height="12"/><circle r="7"/></svg><div class="processing-overlay" id="collageBusy" hidden><span class="scan-frame"><i></i></span><strong>Opening your photograph</strong><small>Processing locally on your Mac</small></div></div></div><p class="workspace-help"><span>TIP</span><span id="collageHelp">Choose a photo layer, then add an image or try the botanical study.</span></p></section></main>
+    <main class="studio motion-specimen-studio" id="motionSpecimenStudio" data-tool-view="motion" role="tabpanel" aria-labelledby="motionToolTab" tabindex="-1" data-feature="motion-specimen" hidden>
       <aside class="control-rail" aria-label="Motion Specimen controls">
         <div class="rail-intro motion-specimen-intro">
           <p class="eyebrow">COMPOSITION 05</p>
@@ -1205,6 +2421,26 @@ GROUND / WEIGHT</textarea></label>
       </div>
     </dialog>
 
+    <dialog class="confirmation-dialog" id="resetDialog" aria-labelledby="resetDialogTitle" aria-describedby="resetDialogDescription">
+      <div class="confirmation-dialog-frame">
+        <header class="export-dialog-header">
+          <div>
+            <p class="eyebrow">RESET COMPOSITION</p>
+            <h2 id="resetDialogTitle">Return settings to defaults?</h2>
+            <p id="resetDialogTool">Foreground Study</p>
+          </div>
+          <button class="export-dialog-close" id="resetDialogClose" type="button" aria-label="Close reset confirmation">×</button>
+        </header>
+        <div class="confirmation-dialog-body">
+          <p id="resetDialogDescription">Your uploaded source media will stay loaded. Layout, color, position, treatment, and typography controls will return to their defaults.</p>
+        </div>
+        <footer class="confirmation-dialog-actions">
+          <button class="confirmation-cancel" id="resetDialogCancel" type="button">Keep editing</button>
+          <button class="confirmation-confirm" id="resetDialogConfirm" type="button">Reset settings</button>
+        </footer>
+      </div>
+    </dialog>
+
     <dialog class="export-dialog" id="exportDialog" aria-labelledby="exportDialogTitle">
       <div class="export-dialog-frame">
         <header class="export-dialog-header">
@@ -1221,6 +2457,7 @@ GROUND / WEIGHT</textarea></label>
             <select id="exportDialogSize">
               <option value="900">Standard · 900 × 1200</option>
               <option value="1350">High · 1350 × 1800</option>
+              <option value="3000">Master · 3000 × 4000</option>
             </select>
           </label>
           <div class="animated-export-controls" id="animatedExportControls" hidden>
@@ -1258,7 +2495,7 @@ GROUND / WEIGHT</textarea></label>
         <header class="export-dialog-header">
           <div>
             <p class="eyebrow">CANVAS / OUTPUT</p>
-            <h2 id="outputFormatTitle">Choose an output format</h2>
+            <h2 id="outputFormatTitle">Set your canvas</h2>
             <p id="outputFormatSummary">Field portrait · 900 × 1200 · reflow</p>
           </div>
           <button class="export-dialog-close" id="outputFormatClose" type="button" aria-label="Close output format">×</button>
@@ -1266,9 +2503,20 @@ GROUND / WEIGHT</textarea></label>
         <div class="output-format-presets" role="group" aria-label="Canvas aspect ratio">
           <button type="button" class="selected" data-output-format="three-four" aria-pressed="true"><i style="--ratio:3/4"></i><span><strong>3:4</strong><small>Field portrait</small></span></button>
           <button type="button" data-output-format="four-five" aria-pressed="false"><i style="--ratio:4/5"></i><span><strong>4:5</strong><small>Social portrait</small></span></button>
-          <button type="button" data-output-format="square" aria-pressed="false"><i style="--ratio:1/1"></i><span><strong>1:1</strong><small>Square</small></span></button>
+          <button type="button" data-output-format="square" aria-pressed="false"><i style="--ratio:1/1"></i><span><strong>1:1</strong><small>Album cover<br/>3000 × 3000</small></span></button>
           <button type="button" data-output-format="story" aria-pressed="false"><i style="--ratio:9/16"></i><span><strong>9:16</strong><small>Story / reel</small></span></button>
           <button type="button" data-output-format="wide" aria-pressed="false"><i style="--ratio:16/9"></i><span><strong>16:9</strong><small>Landscape</small></span></button>
+        </div>
+        <div class="export-dialog-settings output-canvas-size">
+          <label for="outputCanvasSize">
+            <span>Canvas resolution</span>
+            <select id="outputCanvasSize">
+              <option value="900">Standard · 900 × 1200 px</option>
+              <option value="1350">High · 1350 × 1800 px</option>
+              <option value="3000">Master · 3000 × 4000 px</option>
+            </select>
+          </label>
+          <p>Album cover sets a square 3000 × 3000 canvas. Compose in this frame, then export PNG or JPEG. Your canvas choice applies across all compositions.</p>
         </div>
         <div class="output-format-behavior">
           <p><strong>Resize behavior</strong><small>Reflow adapts split compositions automatically. Preserve keeps the full design visible. Fill crops overflow.</small></p>
@@ -1337,7 +2585,7 @@ GROUND / WEIGHT</textarea></label>
               <input id="contourGiphyKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" />
               <button type="submit">Save key</button>
             </div>
-            <p><a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener noreferrer">Create a free key ↗</a></p>
+            <p class="giphy-key-actions"><a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener noreferrer">Create a free key ↗</a><button id="contourGiphyClearKey" type="button" hidden>Remove saved key</button></p>
           </form>
         </section>
         <form class="icon-picker-search-row giphy-search-row" id="contourGiphySearchForm">
@@ -1369,19 +2617,31 @@ GROUND / WEIGHT</textarea></label>
       </div>
     </dialog>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
     <iframe name="fieldStudyDownload" title="Export download" hidden></iframe>
-    <script src="/output-format.js"></script>
+    <script src="/output-format.js?v=album-canvas-1"></script>
     <script src="/alignment-guides.js"></script>
     <script src="/project-palette.js"></script>
     <script src="/editorial-text.js"></script>
     <script src="/feature-flags.js"></script>
-    <script src="/app.js"></script>
-    <script src="/poetic.js"></script>
+    <script src="/app.js?v=collage-1"></script>
+    <script src="/poetic.js?v=album-canvas-1"></script>
     <script src="/vendor/omggif/omggif.js?v=1"></script>
-    <script src="/contour.js"></script>
+    <script src="/contour.js?v=album-canvas-1"></script>
     <script src="/contour-icon-picker.js"></script>
     <script src="/contour-giphy-picker.js"></script>
-    <script src="/image-index.js"></script>
+    <script src="/image-index.js?v=album-canvas-1"></script>
+    <script src="/aura-engine.js"></script>
+    <script src="/contour-aura.js?v=album-canvas-1"></script>
+    <script src="/frost-engine.js"></script>
+    <script src="/frosted-reveal.js?v=album-canvas-1"></script>
+    <script src="/weave-engine.js?v=1"></script>
+    <script src="/paper-weave.js?v=album-canvas-1"></script>
+    <script src="/emboss-engine.js?v=3"></script>
+    <script src="/embossed-print.js?v=album-canvas-1"></script>
+    <script src="/text-field-engine.js?v=1"></script>
+    <script src="/text-field.js?v=album-canvas-1"></script>
+    <script src="/collage-engine.js?v=1"></script>
+    <script src="/editorial-collage.js?v=2"></script>
   </body>
 </html>

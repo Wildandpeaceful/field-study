@@ -1340,6 +1340,7 @@
     deactivate,
     refreshFormat: render,
     reset,
+    hasContent: () => Boolean(state.file),
     exportPng,
     exportAnimated,
     getExportOptions: () => ({

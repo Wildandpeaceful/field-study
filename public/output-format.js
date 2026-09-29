@@ -4,7 +4,7 @@
   const presets = [
     { id: "three-four", label: "3:4", name: "Field portrait", ratio: 3 / 4, typical: "900 × 1200" },
     { id: "four-five", label: "4:5", name: "Social portrait", ratio: 4 / 5, typical: "1080 × 1350" },
-    { id: "square", label: "1:1", name: "Square", ratio: 1, typical: "1080 × 1080" },
+    { id: "square", label: "1:1", name: "Album cover", ratio: 1, typical: "3000 × 3000" },
     { id: "story", label: "9:16", name: "Story / reel", ratio: 9 / 16, typical: "1080 × 1920" },
     { id: "wide", label: "16:9", name: "Landscape", ratio: 16 / 9, typical: "1920 × 1080" },
   ];
@@ -16,6 +16,7 @@
   const state = {
     id: presetMap.has(stored?.id) ? stored.id : "three-four",
     behavior: ["reflow", "preserve", "fill"].includes(stored?.behavior) ? stored.behavior : "reflow",
+    shortEdge: [900, 1350, 3000].includes(stored?.shortEdge) ? stored.shortEdge : 900,
   };
   const listeners = new Set();
 
@@ -43,19 +44,26 @@
     catch (_) { /* Local persistence is optional. */ }
   }
 
-  function notify() {
+  function notify(outputSizeChanged = false) {
     save();
     syncUi();
-    const detail = get();
+    const detail = { ...get(), outputSizeChanged };
     listeners.forEach((listener) => listener(detail));
     window.dispatchEvent(new CustomEvent("fieldstudy:formatchange", { detail }));
   }
 
-  function set(id, behavior = state.behavior) {
+  function set(id, behavior = state.behavior, shortEdge = state.shortEdge) {
     if (!presetMap.has(id)) return;
     state.id = id;
     if (["reflow", "preserve", "fill"].includes(behavior)) state.behavior = behavior;
-    notify();
+    const outputSizeChanged = [900, 1350, 3000].includes(Number(shortEdge)) && state.shortEdge !== Number(shortEdge);
+    if (outputSizeChanged) state.shortEdge = Number(shortEdge);
+    notify(outputSizeChanged);
+  }
+
+  function setOutputSize(shortEdge) {
+    if (![900, 1350, 3000].includes(Number(shortEdge))) return;
+    set(state.id, state.behavior, Number(shortEdge));
   }
 
   function setBehavior(behavior) {
@@ -65,7 +73,7 @@
   }
 
   function get() {
-    return { ...current(), behavior: state.behavior, dimensions: dimensions(), logical: logicalDimensions(), sideBySide: sideBySide() };
+    return { ...current(), behavior: state.behavior, shortEdge: state.shortEdge, dimensions: dimensions(state.shortEdge), logical: logicalDimensions(), sideBySide: sideBySide() };
   }
 
   function applyShell(shell, split = false) {
@@ -302,22 +310,32 @@
     const button = document.querySelector("#outputFormatButton");
     if (button) {
       button.querySelector("strong").textContent = preset.label;
-      button.title = "Output format · " + preset.name;
+      const output = dimensions(state.shortEdge);
+      button.title = `Canvas · ${preset.name} · ${output.width} × ${output.height} px`;
     }
-    document.querySelectorAll("[data-output-format]").forEach((button) => {
+    document.querySelectorAll("button[data-output-format]").forEach((button) => {
       const selected = button.dataset.outputFormat === preset.id;
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    document.querySelectorAll("[data-output-behavior]").forEach((button) => {
+    document.querySelectorAll("button[data-output-behavior]").forEach((button) => {
       const selected = button.dataset.outputBehavior === state.behavior;
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
     const summary = document.querySelector("#outputFormatSummary");
     if (summary) {
-      const output = dimensions();
+      const output = dimensions(state.shortEdge);
       summary.textContent = preset.name + " · " + output.width + " × " + output.height + " · " + state.behavior;
+    }
+    const sizeSelect = document.querySelector("#outputCanvasSize");
+    if (sizeSelect) {
+      Array.from(sizeSelect.options).forEach((option) => {
+        const output = dimensions(Number(option.value));
+        const label = option.value === "3000" ? "Master" : option.value === "1350" ? "High" : "Standard";
+        option.textContent = `${label} · ${output.width} × ${output.height} px`;
+      });
+      sizeSelect.value = String(state.shortEdge);
     }
     document.querySelectorAll("[data-canvas-ratio]").forEach((label) => { label.textContent = preset.label; });
   }
@@ -332,8 +350,9 @@
     dialog?.addEventListener("click", (event) => {
       if (event.target === dialog) dialog.close();
     });
-    document.querySelectorAll("[data-output-format]").forEach((button) => button.addEventListener("click", () => set(button.dataset.outputFormat, "reflow")));
-    document.querySelectorAll("[data-output-behavior]").forEach((button) => button.addEventListener("click", () => setBehavior(button.dataset.outputBehavior)));
+    document.querySelectorAll("button[data-output-format]").forEach((button) => button.addEventListener("click", () => set(button.dataset.outputFormat, "reflow", button.dataset.outputFormat === "square" ? 3000 : state.shortEdge)));
+    document.querySelector("#outputCanvasSize")?.addEventListener("change", (event) => setOutputSize(event.target.value));
+    document.querySelectorAll("button[data-output-behavior]").forEach((button) => button.addEventListener("click", () => setBehavior(button.dataset.outputBehavior)));
     syncUi();
   }
 
@@ -341,6 +360,7 @@
     presets,
     get,
     set,
+    setOutputSize,
     setBehavior,
     subscribe,
     dimensions,

@@ -78,7 +78,7 @@
       center: defaultTextTransform(),
       rail: defaultTextTransform(),
     },
-    outputWidth: 900,
+    outputWidth: window.outputFormat.get().shortEdge,
     processing: false,
     uploadController: null,
   };
@@ -1048,7 +1048,16 @@
       : "Fill the subject in the lower photo";
     $("#swapSourceImages").hidden = !canSwapSources;
     $("#swapSourceImages").disabled = !canSwapSources || state.processing;
-    $("#autoCompose").disabled = !state.sourceImage || !state.foregroundBounds || state.processing;
+    $("#swapSourceImages").title = canSwapSources
+      ? "Exchange the upper subject source and lower-frame image"
+      : "Add a separate lower-frame image to swap source roles";
+    const autoCompose = $("#autoCompose");
+    autoCompose.disabled = !state.sourceImage || !state.foregroundBounds || state.processing;
+    autoCompose.title = state.processing
+      ? "Wait for foreground extraction to finish"
+      : state.foregroundBounds
+        ? "Fit the selected assets and choose a responsive layout"
+        : "Add and extract a subject to enable Auto Compose";
     $("#showPhotoWords").checked = state.showPhotoWords;
     $("#photoWordFields").hidden = !state.showPhotoWords;
     $("#photoWordsInput").value = state.photoWords;
@@ -1857,6 +1866,7 @@
     exportPng,
     exportJpeg,
     refreshFormat: render,
+    hasContent: () => Boolean(state.sourceImage || state.lowerImage),
     getExportOptions: () => ({
       canExport: Boolean(state.sourceImage && state.foregroundImage),
       motionAvailable: false,
@@ -1864,44 +1874,59 @@
       outputHeight: window.outputFormat.dimensions(state.outputWidth).height,
     }),
     setOutputWidth: (width) => {
-      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      state.outputWidth = [900, 1350, 3000].includes(Number(width)) ? Number(width) : 900;
       render();
     },
   };
 
   const motionSpecimenEnabled = Boolean(window.fieldStudyFeatures?.motionSpecimen);
+  const toolLabels = {
+    foreground: "Foreground Study",
+    poetic: "Poetic Fragments",
+    contour: "Contour Loom",
+    index: "Image Index",
+    aura: "Contour Aura",
+    frost: "Frosted Reveal",
+    weave: "Paper Weave",
+    emboss: "Embossed Print",
+    textField: "Text Field",
+    collage: "Editorial Collage",
+    ...(motionSpecimenEnabled ? { motion: "Motion Specimen" } : {}),
+  };
 
   function activeExportController() {
     const activeTool = document.body.dataset.activeTool;
     if (activeTool === "poetic") return window.poeticFragments;
     if (activeTool === "contour") return window.contourLoom;
     if (activeTool === "index") return window.imageIndex;
+    if (activeTool === "aura") return window.contourAura;
+    if (activeTool === "frost") return window.frostedReveal;
+    if (activeTool === "weave") return window.paperWeave;
+    if (activeTool === "emboss") return window.embossedPrint;
+    if (activeTool === "textField") return window.textField;
+    if (activeTool === "collage") return window.editorialCollage;
     if (motionSpecimenEnabled && activeTool === "motion") return window.motionSpecimen;
     return foregroundExportController;
   }
 
   function syncExportDialog() {
     const activeTool = document.body.dataset.activeTool || "foreground";
-    const labels = {
-      foreground: "Foreground Study",
-      poetic: "Poetic Fragments",
-      contour: "Contour Loom",
-      index: "Image Index",
-      ...(motionSpecimenEnabled ? { motion: "Motion Specimen" } : {}),
-    };
     const controller = activeExportController();
     const options = controller?.getExportOptions?.() || { canExport: false, motionAvailable: false, outputWidth: 900 };
     const standardSize = window.outputFormat.dimensions(900);
     const highSize = window.outputFormat.dimensions(1350);
+    const masterSize = window.outputFormat.dimensions(3000);
     const selectedSize = window.outputFormat.dimensions(options.outputWidth || 900);
     const motionAvailable = Boolean(options.motionAvailable);
+    const motionSizeSupported = Number(options.outputWidth) <= 1350;
     const clipDuration = Math.max(3, Math.min(60, Number(options.clipDuration) || 10));
     const formatLabel = options.format?.label || "browser-native video";
-    $("#exportDialogTool").textContent = labels[activeTool];
+    $("#exportDialogTool").textContent = toolLabels[activeTool];
     $("#exportDialogSize").value = String(options.outputWidth || 900);
     const sizeOptions = $("#exportDialogSize").options;
     if (sizeOptions[0]) sizeOptions[0].textContent = `Standard · ${standardSize.width} × ${standardSize.height}`;
     if (sizeOptions[1]) sizeOptions[1].textContent = `High · ${highSize.width} × ${highSize.height}`;
+    if (sizeOptions[2]) sizeOptions[2].textContent = `Master · ${masterSize.width} × ${masterSize.height}`;
     $("#exportImageChoice").disabled = !options.canExport || Boolean(options.recording);
     $("#exportJpegChoice").disabled = !options.canExport || Boolean(options.recording);
     $("#exportImageChoice small").textContent = `PNG · ${selectedSize.width} × ${selectedSize.height} · current frame`;
@@ -1910,11 +1935,11 @@
     $("#animatedClipDuration").value = clipDuration;
     $("#animatedClipDurationOutput").textContent = `${clipDuration}s`;
     const motionChoice = $("#animatedExport");
-    motionChoice.disabled = !motionAvailable || Boolean(options.recording);
+    motionChoice.disabled = !motionAvailable || !motionSizeSupported || Boolean(options.recording);
     $("strong", motionChoice).textContent = options.recording
       ? "Recording video"
       : `Export ${clipDuration}s video`;
-    $("#animatedExportFormat").textContent = `Records locally as ${formatLabel} · ${options.audioEnabled ? "sound on" : "silent"} · current playhead`;
+    $("#animatedExportFormat").textContent = !motionSizeSupported ? "Choose Standard or High output size for video export." : `Records locally as ${formatLabel} · ${options.audioEnabled ? "sound on" : "silent"} · current playhead`;
     $("#exportDialogNote").textContent = !options.canExport
       ? "Add the required source media before exporting."
       : motionAvailable
@@ -1930,14 +1955,71 @@
     const dialog = $("#exportDialog");
     syncExportDialog();
     if (!dialog.open) dialog.showModal();
-    $("#exportImageChoice").focus();
+    const firstAvailableChoice = $$(".export-choice", dialog).find((button) => !button.hidden && !button.disabled);
+    (firstAvailableChoice || $("#exportDialogClose")).focus();
+  }
+
+  function setupControlRailNavigation() {
+    $$(".control-rail").forEach((rail) => {
+      const sections = $$(":scope > .control-section", rail);
+      const intro = rail.querySelector(":scope > .rail-intro");
+      if (!intro || !sections.length || rail.querySelector(":scope > .rail-section-nav")) return;
+      const essentialSections = new Set(sections.filter((section) => section.open));
+      const tool = rail.closest("[data-tool-view]")?.dataset.toolView || "composition";
+      const nav = document.createElement("div");
+      nav.className = "rail-section-nav";
+      nav.setAttribute("aria-label", `${toolLabels[tool] || "Composition"} section controls`);
+      nav.innerHTML = '<output aria-live="polite"></output><button type="button" data-rail-essentials>Essentials</button><button type="button" data-rail-collapse>Collapse all</button>';
+      const status = nav.querySelector("output");
+      const updateStatus = () => {
+        const openCount = sections.filter((section) => section.open).length;
+        status.textContent = `${openCount} / ${sections.length} sections open`;
+      };
+      nav.querySelector("[data-rail-essentials]").addEventListener("click", () => {
+        sections.forEach((section) => { section.open = essentialSections.has(section); });
+        updateStatus();
+        showToast(`${toolLabels[tool] || "Composition"} essentials opened.`);
+      });
+      nav.querySelector("[data-rail-collapse]").addEventListener("click", () => {
+        sections.forEach((section) => { section.open = false; });
+        updateStatus();
+        showToast(`${toolLabels[tool] || "Composition"} controls collapsed.`);
+      });
+      sections.forEach((section) => section.addEventListener("toggle", updateStatus));
+      intro.insertAdjacentElement("afterend", nav);
+      updateStatus();
+    });
+  }
+
+  function runActiveReset() {
+    const activeTool = document.body.dataset.activeTool;
+    if (activeTool === "poetic") window.poeticFragments?.reset();
+    else if (activeTool === "contour") window.contourLoom?.reset();
+    else if (activeTool === "index") window.imageIndex?.reset();
+    else if (activeTool === "aura") window.contourAura?.reset();
+    else if (activeTool === "frost") window.frostedReveal?.reset();
+    else if (activeTool === "weave") window.paperWeave?.reset();
+    else if (activeTool === "emboss") window.embossedPrint?.reset();
+    else if (activeTool === "textField") window.textField?.reset();
+    else if (activeTool === "collage") window.editorialCollage?.reset();
+    else if (motionSpecimenEnabled && activeTool === "motion") window.motionSpecimen?.reset();
+    else resetComposition();
+  }
+
+  function openResetDialog() {
+    const activeTool = document.body.dataset.activeTool || "foreground";
+    const dialog = $("#resetDialog");
+    $("#resetDialogTool").textContent = toolLabels[activeTool];
+    if (!dialog.open) dialog.showModal();
+    $("#resetDialogCancel").focus();
   }
 
   function activateTool(tool) {
-    const availableTools = new Set(["foreground", "poetic", "contour", "index"]);
+    const availableTools = new Set(["foreground", "poetic", "contour", "index", "aura", "frost", "weave", "emboss", "textField", "collage"]);
     if (motionSpecimenEnabled) availableTools.add("motion");
     const nextTool = availableTools.has(tool) ? tool : "foreground";
     const previousTool = document.body.dataset.activeTool;
+    if (previousTool !== nextTool && previousTool === "textField") window.textField?.deactivate?.();
     if (previousTool !== nextTool && previousTool === "poetic") window.poeticFragments?.deactivate?.();
     if (motionSpecimenEnabled && previousTool !== nextTool && previousTool === "motion") window.motionSpecimen?.deactivate?.();
     document.body.dataset.activeTool = nextTool;
@@ -1948,9 +2030,20 @@
     $$("[data-tool-switch]").forEach((button) => {
       const selected = button.dataset.toolSwitch === nextTool;
       button.classList.toggle("selected", selected);
-      button.setAttribute("aria-pressed", String(selected));
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+      if (selected) {
+        requestAnimationFrame(() => button.scrollIntoView({ block: "nearest", inline: "nearest" }));
+      }
     });
-    if (nextTool === "poetic") {
+    $$("[data-tool-view]").forEach((view) => view.setAttribute("aria-hidden", String(view.hidden)));
+    const resetButton = $("#resetButton");
+    resetButton.setAttribute("aria-label", `Reset ${toolLabels[nextTool]} settings`);
+    resetButton.title = `Reset ${toolLabels[nextTool]} settings · source media stays loaded`;
+    if (nextTool === "collage") {
+      document.title = "Editorial Collage — Field/Study";
+      window.editorialCollage?.activate();
+    } else if (nextTool === "poetic") {
       document.title = "Poetic Fragments — Field/Study";
       window.poeticFragments?.activate();
     } else if (nextTool === "contour") {
@@ -1959,6 +2052,21 @@
     } else if (nextTool === "index") {
       document.title = "Image Index — Field/Study";
       window.imageIndex?.activate();
+    } else if (nextTool === "textField") {
+      document.title = "Text Field — Field/Study";
+      window.textField?.activate();
+    } else if (nextTool === "emboss") {
+      document.title = "Embossed Print — Field/Study";
+      window.embossedPrint?.activate();
+    } else if (nextTool === "weave") {
+      document.title = "Paper Weave — Field/Study";
+      window.paperWeave?.activate();
+    } else if (nextTool === "frost") {
+      document.title = "Frosted Reveal — Field/Study";
+      window.frostedReveal?.activate();
+    } else if (nextTool === "aura") {
+      document.title = "Contour Aura — Field/Study";
+      window.contourAura?.activate();
     } else if (motionSpecimenEnabled && nextTool === "motion") {
       document.title = "Motion Specimen — Field/Study";
       window.motionSpecimen?.activate();
@@ -1975,13 +2083,40 @@
     button.addEventListener("click", () => activateTool(button.dataset.toolSwitch));
   });
 
-  $("#resetButton").addEventListener("click", () => {
-    const activeTool = document.body.dataset.activeTool;
-    if (activeTool === "poetic") window.poeticFragments?.reset();
-    else if (activeTool === "contour") window.contourLoom?.reset();
-    else if (activeTool === "index") window.imageIndex?.reset();
-    else if (motionSpecimenEnabled && activeTool === "motion") window.motionSpecimen?.reset();
-    else resetComposition();
+  // Keep the active workspace visible when the navigation rail changes width.
+  const toolSwitcher = $(".tool-switcher");
+  new ResizeObserver(() => {
+    const selected = toolSwitcher.querySelector('[aria-selected="true"]');
+    if (!selected) return;
+    const rail = toolSwitcher.getBoundingClientRect();
+    const tab = selected.getBoundingClientRect();
+    if (tab.left < rail.left) toolSwitcher.scrollLeft += tab.left - rail.left;
+    else if (tab.right > rail.right) toolSwitcher.scrollLeft += tab.right - rail.right;
+  }).observe(toolSwitcher);
+
+  $(".tool-switcher").addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = $$("[data-tool-switch]").filter((button) => !button.hidden);
+    const currentIndex = Math.max(0, tabs.indexOf(document.activeElement));
+    let nextIndex = currentIndex;
+    if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = tabs.length - 1;
+    else nextIndex = (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    event.preventDefault();
+    tabs[nextIndex].focus();
+    activateTool(tabs[nextIndex].dataset.toolSwitch);
+  });
+
+  $("#resetButton").addEventListener("click", openResetDialog);
+  $("#resetDialogClose").addEventListener("click", () => $("#resetDialog").close("cancel"));
+  $("#resetDialogCancel").addEventListener("click", () => $("#resetDialog").close("cancel"));
+  $("#resetDialogConfirm").addEventListener("click", () => {
+    $("#resetDialog").close("reset");
+    runActiveReset();
+    $("#resetButton").focus();
+  });
+  $("#resetDialog").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close("cancel");
   });
   $("#exportButton").addEventListener("click", openExportDialog);
   $("#exportDialogClose").addEventListener("click", () => $("#exportDialog").close());
@@ -1989,7 +2124,7 @@
     if (event.target === event.currentTarget) event.currentTarget.close();
   });
   $("#exportDialogSize").addEventListener("change", (event) => {
-    activeExportController()?.setOutputWidth?.(event.target.value);
+    window.outputFormat.setOutputSize(event.target.value);
     syncExportDialog();
   });
   $("#exportImageChoice").addEventListener("click", () => {
@@ -2017,6 +2152,14 @@
       event.preventDefault();
       openExportDialog();
     }
+  });
+
+  window.addEventListener("beforeunload", (event) => {
+    const controllers = [foregroundExportController, window.poeticFragments, window.contourLoom, window.imageIndex, window.contourAura, window.frostedReveal, window.paperWeave, window.embossedPrint, window.textField, window.editorialCollage];
+    if (motionSpecimenEnabled) controllers.push(window.motionSpecimen);
+    if (!controllers.some((controller) => controller?.hasContent?.())) return;
+    event.preventDefault();
+    event.returnValue = "";
   });
 
   window.fieldStudyShell = { activateTool, showToast };
@@ -2064,12 +2207,24 @@
   renderSwatches();
   syncControls();
   render();
+  setupControlRailNavigation();
   activateTool("foreground");
-  window.addEventListener("fieldstudy:formatchange", () => {
+  window.addEventListener("fieldstudy:formatchange", (event) => {
+    if (event.detail.outputSizeChanged) {
+      const controllers = [foregroundExportController, window.poeticFragments, window.contourLoom, window.imageIndex, window.contourAura, window.frostedReveal, window.paperWeave, window.embossedPrint, window.textField, window.editorialCollage];
+      if (motionSpecimenEnabled) controllers.push(window.motionSpecimen);
+      controllers.forEach((controller) => controller?.setOutputWidth?.(event.detail.shortEdge));
+    }
     foregroundExportController.refreshFormat();
     window.poeticFragments?.refreshFormat?.();
     window.contourLoom?.refreshFormat?.();
     window.imageIndex?.refreshFormat?.();
+    window.contourAura?.refreshFormat?.();
+    window.frostedReveal?.refreshFormat?.();
+    window.paperWeave?.refreshFormat?.();
+    window.embossedPrint?.refreshFormat?.();
+    window.textField?.refreshFormat?.();
+    window.editorialCollage?.refreshFormat?.();
     if (motionSpecimenEnabled) window.motionSpecimen?.refreshFormat?.();
     if ($("#exportDialog").open) syncExportDialog();
   });

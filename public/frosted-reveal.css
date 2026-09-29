@@ -1,0 +1,34 @@
+/* Sixth workspace: use Field/Study's shared control rail and canvas shell. */
+#frostCanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+#frostCanvas:active { cursor:grabbing; }
+#frostCanvas[data-editing="true"] { cursor:crosshair; }
+#frostHandles { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.frost-actions { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.frost-demo { margin-top:10px; }
+.frost-modes { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:18px; }
+.frost-presets { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:18px; }
+.frost-modes button,.frost-presets button { border:1px solid var(--line); background:var(--paper); border-radius:6px; padding:10px 3px; font-size:11px; cursor:pointer; }
+.frost-modes button.selected,.frost-presets button.selected { border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink); }
+.frost-shape-icon { display:block; width:20px; height:20px; margin:0 auto 8px; border:1.5px solid var(--ink); }
+.frost-shape-icon.circle { border-radius:50%; }
+.frost-shape-icon.rectangle { width:24px; transform:rotate(-8deg); }
+.frost-shape-icon.subject { border-radius:50% 50% 30% 30%; width:16px; }
+.frost-shape-icon.brush { border:0; border-radius:40% 65% 30% 50%; background:var(--ink); transform:rotate(-35deg); }
+.frost-chip { display:block; height:30px; width:34px; border:1px solid #b1b9aa; margin:0 auto 8px; background:radial-gradient(circle at 40% 60%,#518365,transparent 68%),#d0d9c8; }
+.frost-chip.paper { background:linear-gradient(120deg,#ebe3cfaa,#f3efdfef),radial-gradient(ellipse,#347755,#b8c391); }
+.frost-chip.mist { background:radial-gradient(circle at 65% 40%,#c1d2b3,transparent 72%),#869f90; }
+.frost-mask-controls { border-top:1px solid var(--line); margin-top:14px; padding-top:6px; }
+.frost-tools { display:flex; gap:3px; padding:3px; background:#e9e9e1; }
+.frost-tools button { flex:1; padding:9px 4px; border:0; background:transparent; font-size:11px; cursor:pointer; }
+.frost-tools button.selected { background:white; box-shadow:0 1px 4px #17191418; }
+.frost-studio .range-row { grid-template-columns:108px minmax(0,1fr) 44px; }
+.frost-select { display:grid; gap:7px; font-size:11px; margin:14px 0; }
+.frost-select select { padding:9px; border:1px solid var(--line); border-radius:5px; background:var(--panel); width:100%; }
+.frost-move[aria-pressed="true"] { color:var(--ink); background:var(--acid); }
+.frost-studio .small-action:disabled { opacity:.45; cursor:not-allowed; }
+.frost-empty-mark { display:grid; place-items:center; width:90px; height:110px; margin-bottom:24px; border:1px solid #bfccba; background:linear-gradient(140deg,#ceddc6,#8ba08c); box-shadow:6px 7px 0 #213d3514; }
+.frost-empty-mark i { width:52px; height:52px; border-radius:50%; background:#315841; box-shadow:0 0 0 6px #f5f3eb55; }
+.empty-overlay .frost-empty-demo { background:transparent; border:0; color:var(--muted); font-size:11px; margin-top:6px; }
+@media (min-width:761px) { .header-meta { flex:1 1 0; min-width:0; } .header-center { overflow:hidden; } }
+@media (max-width:1180px) { #frostModeLabel { display:none; } }
+@media (max-width:760px) { .frost-studio .workspace-help { padding-left:14px; padding-right:14px; } }

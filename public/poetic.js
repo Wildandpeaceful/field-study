@@ -56,7 +56,7 @@
     paletteTarget: "background",
     captionTransform: defaultCaptionTransform(),
     photo: { x: 0.5, y: 0.5, scale: 1 },
-    outputWidth: 900,
+    outputWidth: window.outputFormat.get().shortEdge,
     seed: 4,
     dragging: null,
     activeFragment: -1,
@@ -1247,6 +1247,7 @@
     deactivate,
     refreshFormat: render,
     reset,
+    hasContent: () => Boolean(state.image),
     exportPng,
     exportJpeg,
     exportAnimated,
@@ -1266,7 +1267,7 @@
       syncControls();
     },
     setOutputWidth: (width) => {
-      state.outputWidth = [900, 1350].includes(Number(width)) ? Number(width) : 900;
+      state.outputWidth = [900, 1350, 3000].includes(Number(width)) ? Number(width) : 900;
       syncControls();
       render();
     },

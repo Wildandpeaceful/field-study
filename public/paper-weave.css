@@ -1,0 +1,20 @@
+/* Paper Weave follows the existing studio controls and responsive artboard. */
+#weaveCanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+#weaveCanvas:active { cursor:grabbing; }
+.weave-source-label { font:9px ui-monospace,monospace; color:var(--muted); letter-spacing:.07em; margin:12px 0 7px; }
+.weave-source-label:first-child { margin-top:0; }
+.weave-actions { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.weave-presets { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:18px; }
+.weave-presets button { border:1px solid var(--line); background:var(--paper); border-radius:6px; padding:10px 3px; font-size:11px; cursor:pointer; }
+.weave-presets button.selected { border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink); }
+.weave-chip { display:block; width:34px; height:34px; margin:0 auto 8px; background:repeating-linear-gradient(90deg,transparent 0 8px,#eee7d8 8px 10px),repeating-linear-gradient(0deg,#52745b 0 8px,#eee7d8 8px 10px); box-shadow:1px 2px 2px #17191433; }
+.weave-chip.handmade { transform:rotate(-5deg); background:repeating-linear-gradient(89deg,transparent 0 7px,#eee7d8 7px 10px),repeating-linear-gradient(2deg,#bb7556 0 7px,#eee7d8 7px 10px); }
+.weave-chip.basket { background:repeating-conic-gradient(#375443 0 25%,#b58860 0 50%) 0 0/16px 16px; }
+.weave-select { display:grid; gap:7px; font-size:11px; margin:14px 0; }
+.weave-select select { padding:9px; border:1px solid var(--line); border-radius:5px; background:var(--panel); width:100%; }
+.weave-studio .range-row { grid-template-columns:108px minmax(0,1fr) 44px; }
+.weave-studio .small-action:disabled { opacity:.45; cursor:not-allowed; }
+.weave-empty-mark { display:block; width:100px; height:100px; margin-bottom:24px; transform:rotate(-7deg); background:repeating-linear-gradient(90deg,transparent 0 21px,#efeee7 21px 26px),repeating-linear-gradient(0deg,#67866b 0 21px,#efeee7 21px 26px); box-shadow:4px 6px 0 #213d3518; }
+.empty-overlay .weave-empty-demo { background:transparent; border:0; color:var(--muted); font-size:11px; margin-top:6px; }
+@media (max-width:1180px) { #weaveModeLabel { display:none; } }
+@media (max-width:760px) { .weave-studio .workspace-help { padding-left:14px; padding-right:14px; } }
